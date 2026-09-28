@@ -6,6 +6,11 @@ export type HerRepository = {
   createTask(userId: string, input: { title: string; dueDate?: string; category?: "study" | "career" | "personal" }): Promise<unknown>;
   completeTask(userId: string, taskId: string): Promise<unknown>;
   getTodayWater(userId: string): Promise<number>;
+  addWaterGlass(userId: string): Promise<unknown>;
+  getExpenses(userId: string): Promise<unknown[]>;
+  addExpense(userId: string, input: { category: string; amount: number; date?: string }): Promise<unknown>;
+  getJournalEntries(userId: string): Promise<unknown[]>;
+  addJournalEntry(userId: string, body: string): Promise<unknown>;
   getCycleSummary(userId: string): Promise<unknown | null>;
 };
 
@@ -69,7 +74,28 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
       return rows?.[0] ?? null;
     },
     async getTodayWater() {
-      return 0;
+      const today = new Date().toISOString().slice(0, 10);
+      const rows = await request<Array<{ glasses?: number }>>(`water_logs?select=glasses&log_date=eq.${today}`);
+      return rows.reduce((sum, row) => sum + (row.glasses ?? 0), 0);
+    },
+    async addWaterGlass() {
+      const today = new Date().toISOString().slice(0, 10);
+      const rows = await request<unknown[]>(`water_logs`, { method: "POST", body: JSON.stringify({ log_date: today, glasses: 1 }) });
+      return rows?.[0] ?? null;
+    },
+    async getExpenses() {
+      return request<unknown[]>(`expenses?select=id,category,amount,date&order=date.desc`);
+    },
+    async addExpense(_userId, input) {
+      const rows = await request<unknown[]>(`expenses`, { method: "POST", body: JSON.stringify({ category: input.category, amount: input.amount, date: input.date ?? new Date().toISOString().slice(0, 10) }) });
+      return rows?.[0] ?? null;
+    },
+    async getJournalEntries() {
+      return request<unknown[]>(`journal_entries?select=id,body,created_at&order=created_at.desc`);
+    },
+    async addJournalEntry(_userId, body) {
+      const rows = await request<unknown[]>(`journal_entries`, { method: "POST", body: JSON.stringify({ body }) });
+      return rows?.[0] ?? null;
     },
     async getCycleSummary() {
       return null;
