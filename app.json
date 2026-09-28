@@ -15,7 +15,9 @@
       "adaptiveIcon": {
         "backgroundColor": "#F8F5F2"
       },
-      "package": "com.herapp.life"
+      "package": "com.herapp.life",
+      "versionCode": 2,
+      "minSdkVersion": 24
     },
     "plugins": [
       "expo-notifications"
