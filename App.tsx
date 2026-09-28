@@ -1,5 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useMemo, useState } from "react";
+import { herStore } from "./src/store";
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 type Mood = "Great" | "Okay" | "Low" | "Tired";
@@ -16,9 +17,10 @@ const quickAccess: [Module,string,string][]=[
 export default function App(){
  const [tab,setTab]=useState<Tab>("Home");
  const [module,setModule]=useState<Module|null>(null);
- const [mood,setMood]=useState<Mood>("Okay");
- const [water,setWater]=useState(4);
- const [goalAmount,setGoalAmount]=useState(6000);
+ const initialData = herStore.get();
+ const [mood,setMood]=useState<Mood>(initialData.mood ?? "Okay");
+ const [water,setWater]=useState(initialData.waterGlasses);
+ const [goalAmount,setGoalAmount]=useState(initialData.goals[0]?.currentAmount ?? 0);
  const [journal,setJournal]=useState("");
  const [savedJournal,setSavedJournal]=useState("");
  const [aiInput,setAiInput]=useState("");
@@ -32,14 +34,14 @@ export default function App(){
    <Pressable style={styles.profileButton} onPress={()=>goTab("HER AI")}><Text style={styles.profileText}>A</Text></Pressable></View>
   <Text style={styles.greeting}>{greeting}</Text><Text style={styles.subtitle}>Here’s a gentle look at your day.</Text>
   <View style={styles.moodCard}><Text style={styles.cardEyebrow}>HOW ARE YOU FEELING?</Text><Text style={styles.cardTitle}>Check in with yourself</Text>
-   <View style={styles.moodRow}>{(["Great","Okay","Low","Tired"] as Mood[]).map(item=><Pressable key={item} onPress={()=>setMood(item)} style={[styles.moodPill,mood===item&&styles.moodPillActive]}><Text style={[styles.moodText,mood===item&&styles.moodTextActive]}>{item}</Text></Pressable>)}</View>
+   <View style={styles.moodRow}>{(["Great","Okay","Low","Tired"] as Mood[]).map(item=><Pressable key={item} onPress={()=>{setMood(item);herStore.setMood(item)}} style={[styles.moodPill,mood===item&&styles.moodPillActive]}><Text style={[styles.moodText,mood===item&&styles.moodTextActive]}>{item}</Text></Pressable>)}</View>
   </View>
   <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Today</Text><Text style={styles.sectionLink}>Your overview</Text></View>
   <View style={styles.todayGrid}>
    <TodayCard icon="◐" tint={colors.blush} title="Cycle" body="Period predicted in 6 days" footer="Prediction"/>
    <TodayCard icon="◎" tint={colors.sage} title="Savings" body="Save KSh 700 toward your goal" footer="KSh 6,000 saved"/>
    <TodayCard icon="✓" tint={colors.lavender} title="Study" body="Assignment due Thursday" footer="2 tasks today"/>
-   <TodayCard icon="◌" tint={colors.blue} title="Water" body={water+"/8 glasses"} footer={<Pressable onPress={()=>setWater(Math.min(8,water+1))}><Text style={styles.actionLink}>+ Add glass</Text></Pressable>}/>
+   <TodayCard icon="◌" tint={colors.blue} title="Water" body={water+"/8 glasses"} footer={<Pressable onPress={()=>{herStore.addWaterGlass();setWater(herStore.get().waterGlasses)}}><Text style={styles.actionLink}>+ Add glass</Text></Pressable>}/>
   </View>
   <View style={styles.reminderCard}><View style={styles.reminderIcon}><Text>✦</Text></View><View style={{flex:1}}><Text style={styles.cardEyebrow}>EVENING ROUTINE</Text><Text style={styles.reminderTitle}>Skincare at 8:00 PM</Text><Text style={styles.reminderBody}>A small thing for you, by you.</Text></View><Text style={styles.chevron}>›</Text></View>
   <Pressable style={styles.aiCard} onPress={()=>goTab("HER AI")}><View style={styles.aiBadge}><Text style={styles.aiBadgeText}>AI</Text></View><View style={{flex:1}}><Text style={styles.aiTitle}>Ask HER</Text><Text style={styles.aiBody}>Plan your week, set a goal, or just talk.</Text></View><Text style={styles.aiArrow}>→</Text></Pressable>
@@ -58,7 +60,7 @@ export default function App(){
  const goals=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Goals" subtitle="Turn what matters to you into small steps."/>
   <View style={styles.goalCard}><View style={styles.goalTop}><View style={[styles.goalIcon,{backgroundColor:colors.blush}]}><Text>◎</Text></View><View style={{flex:1}}><Text style={styles.cardEyebrow}>SAVINGS GOAL</Text><Text style={styles.featureTitle}>Save KSh 20,000</Text></View><Text style={styles.percent}>{Math.round((goalAmount/20000)*100)}%</Text></View>
    <View style={styles.progressTrack}><View style={[styles.progressFill,{width:(goalAmount/20000*100)+"%" }]}/></View><View style={styles.goalRow}><Text style={styles.mutedSmall}>KSh {goalAmount.toLocaleString()} saved</Text><Text style={styles.mutedSmall}>KSh 20,000</Text></View>
-   <Pressable style={styles.secondaryButton} onPress={()=>setGoalAmount(Math.min(20000,goalAmount+700))}><Text style={styles.secondaryText}>Add KSh 700</Text></Pressable>
+   <Pressable style={styles.secondaryButton} onPress={()=>{herStore.addGoalAmount("goal-savings",700);setGoalAmount(herStore.get().goals[0]?.currentAmount ?? goalAmount)}}><Text style={styles.secondaryText}>Add KSh 700</Text></Pressable>
   </View>
   <View style={styles.goalCard}><Text style={styles.cardEyebrow}>MILESTONES</Text>{["Reach KSh 10,000","Reach KSh 15,000","Reach KSh 20,000"].map((x,i)=><View key={x} style={styles.milestone}><View style={[styles.check,{backgroundColor:i===0?colors.sage:colors.cream}]}><Text>{i===0?"✓":""}</Text></View><Text style={styles.milestoneText}>{x}</Text></View>)}</View>
  </ScrollView>;
@@ -66,7 +68,7 @@ export default function App(){
  const journalScreen=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Journal" subtitle="A private place for your thoughts."/>
   <View style={styles.journalPrompt}><Text style={styles.cardEyebrow}>TODAY'S PROMPT</Text><Text style={styles.featureTitle}>What do you need more of this week?</Text></View>
   <TextInput multiline placeholder="Write freely. This is your space." placeholderTextColor={colors.muted} value={journal} onChangeText={setJournal} style={styles.journalInput}/>
-  <Pressable style={styles.primaryButton} onPress={()=>setSavedJournal(journal)}><Text style={styles.primaryButtonText}>Save entry</Text></Pressable>
+  <Pressable style={styles.primaryButton} onPress={()=>{if(journal.trim()){herStore.addJournalEntry(journal.trim());setSavedJournal(journal.trim())}}}><Text style={styles.primaryButtonText}>Save entry</Text></Pressable>
   <Text style={styles.savedLabel}>RECENT ENTRIES</Text><View style={styles.entryCard}><Text style={styles.entryDate}>Today</Text><Text style={styles.entryText}>{savedJournal||"Write something above and save it here."}</Text></View>
  </ScrollView>;
 
