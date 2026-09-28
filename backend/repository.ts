@@ -153,7 +153,8 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
     },
     async getCycleSummary() {
       const cycles = await request<Array<{ start_date: string; end_date?: string; flow?: string }>>(`cycles?select=start_date,end_date,flow&order=start_date.desc&limit=5`);
-      const predictions = await request<Array<{ predicted_start_date: string; confidence?: string }>>(`cycle_predictions?select=predicted_start_date,confidence&order=created_at.desc&limit=1`);\n      const storedPrediction = predictions[0];
+      const predictions = await request<Array<{ predicted_start_date: string; confidence?: string }>>(`cycle_predictions?select=predicted_start_date,confidence&order=created_at.desc&limit=1`);
+      const storedPrediction = predictions[0];
       const latest = cycles[0];
       const previous = cycles[1];
       const cycleLength = latest && previous ? Math.max(1, Math.round((new Date(latest.start_date).getTime() - new Date(previous.start_date).getTime()) / 86400000)) : 28;
