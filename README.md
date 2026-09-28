@@ -24,3 +24,10 @@ npm start
 HER is not just a period tracker. It is a private digital space for managing life: cycle, wellness, self-care, relationships, money, study/career, goals, journaling, and AI-assisted planning.
 
 The default palette is soft and premium. Color customization will be added as a user preference.
+
+
+## Backend foundation
+- PostgreSQL/Supabase-compatible schema in `backend/schema.sql`
+- Authenticated API boundary documented in `backend/api-contract.md`
+- Security and sensitive-data rules in `backend/security.md`
+- HER AI actions are validated server-side and logged
