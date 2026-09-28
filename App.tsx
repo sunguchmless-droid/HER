@@ -53,6 +53,7 @@ export default function App(){
  const [cycleSymptoms,setCycleSymptoms]=useState<string[]>([]);
  const toggleCycleSymptom=(symptom:string)=>setCycleSymptoms((current)=>current.includes(symptom)?current.filter((item)=>item!==symptom):[...current,symptom]);
  const greeting=useMemo(()=>{const h=new Date().getHours();return h<12?"Good morning, Amina":h<18?"Good afternoon, Amina":"Good evening, Amina"},[]);
+ if(!accessToken) return <><StatusBar style="dark"/><AuthScreen onAuthenticated={handleAuthenticated}/></>;
 
  const goTab=(next:Tab)=>{setModule(null);setTab(next)};
 
@@ -87,7 +88,7 @@ export default function App(){
  const goals=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Goals" subtitle="Turn what matters to you into small steps."/>
   <View style={styles.goalCard}><View style={styles.goalTop}><View style={[styles.goalIcon,{backgroundColor:colors.blush}]}><Text>◎</Text></View><View style={{flex:1}}><Text style={styles.cardEyebrow}>SAVINGS GOAL</Text><Text style={styles.featureTitle}>Save KSh 20,000</Text></View><Text style={styles.percent}>{Math.round((goalAmount/20000)*100)}%</Text></View>
    <View style={styles.progressTrack}><View style={[styles.progressFill,{width:(goalAmount/20000*100)+"%" }]}/></View><View style={styles.goalRow}><Text style={styles.mutedSmall}>KSh {goalAmount.toLocaleString()} saved</Text><Text style={styles.mutedSmall}>KSh 20,000</Text></View>
-   <Pressable style={styles.secondaryButton} onPress={async ()=>{herStore.addGoalAmount("goal-savings",700);setGoalAmount(herStore.get().goals[0]?.currentAmount ?? goalAmount);try{await api?.createGoal({title:"Save KSh 20,000",targetAmount:20000})}catch{setRemoteStatus("offline")}}}><Text style={styles.secondaryText}>Add KSh 700</Text></Pressable>
+   <Pressable style={styles.secondaryButton} onPress={async ()=>{herStore.addGoalAmount("goal-savings",700);setGoalAmount(herStore.get().goals[0]?.currentAmount ?? goalAmount);try{await api?.updateGoal("goal-savings",{currentAmount:herStore.get().goals[0]?.currentAmount ?? goalAmount})}catch{setRemoteStatus("offline")}}}><Text style={styles.secondaryText}>Add KSh 700</Text></Pressable>
   </View>
   <View style={styles.goalCard}><Text style={styles.cardEyebrow}>MILESTONES</Text>{["Reach KSh 10,000","Reach KSh 15,000","Reach KSh 20,000"].map((x,i)=><View key={x} style={styles.milestone}><View style={[styles.check,{backgroundColor:i===0?colors.sage:colors.cream}]}><Text>{i===0?"✓":""}</Text></View><Text style={styles.milestoneText}>{x}</Text></View>)}</View>
  </ScrollView>;
