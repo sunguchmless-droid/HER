@@ -163,7 +163,52 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
       const rows = await request<unknown[]>(`cycles`, { method: "POST", body: JSON.stringify({ start_date: input.startDate, end_date: input.endDate ?? null, flow: input.flow ?? null, confirmed: true }) });
       return rows?.[0] ?? null;
     },
-    async getReminders() { return request<unknown[]>(`reminders?select=id,title,due_at,source,completed&completed=eq.false&order=due_at.asc`); },
+    async getReminders() {
+      const now = new Date();
+      const existing = await request<Array<{id:string;title:string;due_at:string;source:string}>>(`reminders?select=id,title,due_at,source,completed&completed=eq.false&order=due_at.asc`);
+      const [cycle, tasks, routines, dates] = await Promise.all([
+        this.getCycleSummary(""),
+        this.getDueTasks(""),
+        this.getRoutines(""),
+        this.getImportantDates("")
+      ]);
+      const candidates: Array<{title:string;dueAt:string;source:"cycle"|"study"|"routine"|"relationship"}> = [];
+      const cycleData = cycle as any;
+      if (cycleData?.predictedPeriodDate) {
+        const due = new Date(cycleData.predictedPeriodDate);
+        due.setDate(due.getDate() - 2);
+        if (due > now) candidates.push({title:"Get ready for your upcoming period",dueAt:due.toISOString(),source:"cycle"});
+      }
+      for (const task of (tasks as any[]).slice(0, 20)) {
+        if (!task.due_at) continue;
+        const due = new Date(task.due_at);
+        const reminder = new Date(due.getTime() - 24 * 60 * 60 * 1000);
+        if (reminder > now) candidates.push({title:`Tomorrow: ${task.title}`,dueAt:reminder.toISOString(),source:"study"});
+      }
+      const routineTimes: Record<string,number> = { morning: 8, evening: 20 };
+      const routineDay = new Date(now);
+      routineDay.setHours(0,0,0,0);
+      for (const routine of (routines as any[]).slice(0, 10)) {
+        const hour = routineTimes[routine.time_of_day];
+        if (hour === undefined) continue;
+        const due = new Date(routineDay);
+        due.setHours(hour,0,0,0);
+        if (due <= now) due.setDate(due.getDate()+1);
+        candidates.push({title:`Routine: ${routine.title}`,dueAt:due.toISOString(),source:"routine"});
+      }
+      for (const item of (dates as any[]).slice(0, 20)) {
+        if (!item.date_on) continue;
+        const year = now.getUTCFullYear();
+        let due = new Date(`${year}-${item.date_on.slice(5)}T09:00:00.000Z`);
+        if (due <= now) due = new Date(`${year+1}-${item.date_on.slice(5)}T09:00:00.000Z`);
+        candidates.push({title:`Today: ${item.title}`,dueAt:due.toISOString(),source:"relationship"});
+      }
+      for (const candidate of candidates) {
+        const duplicate = existing.some(item => item.source === candidate.source && item.title === candidate.title && Math.abs(Date.parse(item.due_at)-Date.parse(candidate.dueAt)) < 60*60*1000);
+        if (!duplicate) await this.createReminder("",candidate);
+      }
+      return request<unknown[]>(`reminders?select=id,title,due_at,source,completed&completed=eq.false&order=due_at.asc`);
+    },
     async createReminder(_userId,input) { const rows=await request<unknown[]>(`reminders`,{method:"POST",body:JSON.stringify({title:input.title,due_at:input.dueAt,source:input.source??"manual",completed:false})}); return rows?.[0]??null; },
     async getAiPermissions() {
       const rows = await request<any[]>(`ai_permissions?select=*`);
