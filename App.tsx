@@ -34,7 +34,7 @@ export default function App(){
   let active = true;
   setRemoteStatus("loading");
   Promise.all([
-   api.getDashboard<{ goals?: Array<{ id:string; current_amount?:number }>; waterGlasses?:number; cycle?:{lastConfirmedPeriodDate?:string; predictedPeriodDate?:string; predictionConfidence?:string} }>(),
+   api.getDashboard<{ goals?: Array<{ id:string; current_amount?:number; target_amount?:number }>; waterGlasses?:number; cycle?:{lastConfirmedPeriodDate?:string; predictedPeriodDate?:string; predictionConfidence?:string} }>(),
    api.getJournal<Array<{ id:string; body:string; created_at?:string }>>()
   ]).then(([dashboard, entries]) => {
    if (!active) return;
@@ -42,6 +42,7 @@ export default function App(){
    const remoteId = dashboard.goals?.[0]?.id;
    if (remoteId) setRemoteGoalId(remoteId);
    if (typeof remoteGoal === "number") setGoalAmount(remoteGoal);
+   if (typeof dashboard.goals?.[0]?.target_amount === "number") setRemoteGoalTarget(dashboard.goals[0].target_amount);
    if (typeof dashboard.waterGlasses === "number") setWater(Math.min(8, dashboard.waterGlasses));
    const latest = entries?.[0]?.body;
    if (latest) setSavedJournal(latest);
@@ -54,6 +55,7 @@ export default function App(){
  const [water,setWater]=useState(initialData.waterGlasses);
  const [goalAmount,setGoalAmount]=useState(initialData.goals[0]?.currentAmount ?? 0);
  const [remoteGoalId,setRemoteGoalId]=useState<string | null>(null);
+ const [remoteGoalTarget,setRemoteGoalTarget]=useState(20000);
  const [journal,setJournal]=useState("");
  const [savedJournal,setSavedJournal]=useState("");
  const [aiInput,setAiInput]=useState("");
@@ -91,7 +93,7 @@ export default function App(){
   <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Today</Text><Text style={styles.sectionLink}>Your overview</Text></View>
   <View style={styles.todayGrid}>
    <TodayCard icon="◐" tint={colors.blush} title="Cycle" body="Period predicted in 6 days" footer="Prediction"/>
-   <TodayCard icon="◎" tint={colors.sage} title="Savings" body="Save KSh 700 toward your goal" footer="KSh 6,000 saved"/>
+   <TodayCard icon="◎" tint={colors.sage} title="Savings" body="Save KSh 700 toward your goal" footer="KSh {goalAmount.toLocaleString()} saved"/>
    <TodayCard icon="✓" tint={colors.lavender} title="Study" body="Assignment due Thursday" footer="2 tasks today"/>
    <TodayCard icon="◌" tint={colors.blue} title="Water" body={water+"/8 glasses"} footer={<Pressable onPress={async ()=>{herStore.addWaterGlass();setWater(herStore.get().waterGlasses);try{await api?.addWaterGlass()}catch{setRemoteStatus("offline")}}}><Text style={styles.actionLink}>+ Add glass</Text></Pressable>}/>
   </View>
@@ -110,8 +112,8 @@ export default function App(){
  </ScrollView>;
 
  const goals=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Goals" subtitle="Turn what matters to you into small steps."/>
-  <View style={styles.goalCard}><View style={styles.goalTop}><View style={[styles.goalIcon,{backgroundColor:colors.blush}]}><Text>◎</Text></View><View style={{flex:1}}><Text style={styles.cardEyebrow}>SAVINGS GOAL</Text><Text style={styles.featureTitle}>Save KSh 20,000</Text></View><Text style={styles.percent}>{Math.round((goalAmount/20000)*100)}%</Text></View>
-   <View style={styles.progressTrack}><View style={[styles.progressFill,{width:(goalAmount/20000*100)+"%" }]}/></View><View style={styles.goalRow}><Text style={styles.mutedSmall}>KSh {goalAmount.toLocaleString()} saved</Text><Text style={styles.mutedSmall}>KSh 20,000</Text></View>
+  <View style={styles.goalCard}><View style={styles.goalTop}><View style={[styles.goalIcon,{backgroundColor:colors.blush}]}><Text>◎</Text></View><View style={{flex:1}}><Text style={styles.cardEyebrow}>SAVINGS GOAL</Text><Text style={styles.featureTitle}>Save KSh {remoteGoalTarget.toLocaleString()}</Text></View><Text style={styles.percent}>{Math.round((goalAmount/remoteGoalTarget)*100)}%</Text></View>
+   <View style={styles.progressTrack}><View style={[styles.progressFill,{width:(goalAmount/remoteGoalTarget*100)+"%" }]}/></View><View style={styles.goalRow}><Text style={styles.mutedSmall}>KSh {goalAmount.toLocaleString()} saved</Text><Text style={styles.mutedSmall}>KSh 20,000</Text></View>
    <Pressable style={styles.secondaryButton} onPress={async ()=>{herStore.addGoalAmount("goal-savings",700);setGoalAmount(herStore.get().goals[0]?.currentAmount ?? goalAmount);try{await remoteGoalId ? api?.updateGoal(remoteGoalId,{currentAmount:herStore.get().goals[0]?.currentAmount ?? goalAmount}) : Promise.resolve()}catch{setRemoteStatus("offline")}}}><Text style={styles.secondaryText}>Add KSh 700</Text></Pressable>
   </View>
   <View style={styles.goalCard}><Text style={styles.cardEyebrow}>MILESTONES</Text>{["Reach KSh 10,000","Reach KSh 15,000","Reach KSh 20,000"].map((x,i)=><View key={x} style={styles.milestone}><View style={[styles.check,{backgroundColor:i===0?colors.sage:colors.cream}]}><Text>{i===0?"✓":""}</Text></View><Text style={styles.milestoneText}>{x}</Text></View>)}</View>
