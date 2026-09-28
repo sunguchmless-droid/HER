@@ -67,6 +67,19 @@ create table if not exists water_logs (
  recorded_on date not null default current_date, created_at timestamptz not null default now()
 );
 
+create table if not exists wellness_checkins (
+ id uuid primary key default gen_random_uuid(),
+ user_id uuid not null references profiles(id) on delete cascade,
+ energy text check (energy in ('Low','Okay','Good','Full')),
+ sleep_minutes integer check (sleep_minutes >= 0),
+ movement_minutes integer check (movement_minutes >= 0),
+ reflection text,
+ recorded_on date not null default current_date,
+ created_at timestamptz not null default now(),
+ updated_at timestamptz not null default now()
+);
+create unique index if not exists wellness_user_date_idx on wellness_checkins(user_id,recorded_on);
+
 create table if not exists cycles (
  id uuid primary key default gen_random_uuid(),
  user_id uuid not null references profiles(id) on delete cascade,
@@ -140,6 +153,7 @@ alter table routines enable row level security;
 alter table journal_entries enable row level security;
 alter table mood_checkins enable row level security;
 alter table water_logs enable row level security;
+alter table wellness_checkins enable row level security;
 alter table cycles enable row level security;
 alter table cycle_predictions enable row level security;
 alter table cycle_symptoms enable row level security;
@@ -180,6 +194,8 @@ drop policy if exists mood_own on mood_checkins;
 create policy mood_own on mood_checkins for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists water_own on water_logs;
 create policy water_own on water_logs for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists wellness_own on wellness_checkins;
+create policy wellness_own on wellness_checkins for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists cycles_own on cycles;
 create policy cycles_own on cycles for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists cycle_symptoms_own on cycle_symptoms;
