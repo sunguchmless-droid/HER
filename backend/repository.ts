@@ -6,11 +6,11 @@ export type HerRepository = {
   getCycleSummary(userId: string): Promise<unknown | null>;
 };
 
-export function createSupabaseRepository(accessToken: string, baseUrl: string): HerRepository {
+export function createSupabaseRepository(accessToken: string, baseUrl: string, anonKey: string): HerRepository {
   async function query<T>(table: string, select = "*") {
     const response = await fetch(`${baseUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}`, {
       headers: {
-        apikey: accessToken,
+        apikey: anonKey,
         Authorization: `Bearer ${accessToken}`,
       },
     });
