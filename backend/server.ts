@@ -67,6 +67,9 @@ export function createHerServer(options: HerServerOptions = {}) {
       if (request.method === "POST" && url.pathname === "/api/water") { json(response, 201, await repository!.addWaterGlass(session.userId)); return; }
       if (request.method === "GET" && url.pathname === "/api/journal") { json(response, 200, await repository!.getJournalEntries(session.userId)); return; }
       if (request.method === "GET" && url.pathname === "/api/expenses") { json(response, 200, await repository!.getExpenses(session.userId)); return; }
+      if (request.method === "POST" && url.pathname === "/api/journal") { const body=await readBody(request); if(typeof body.body!=="string"||!body.body.trim()){json(response,400,{error:"body is required"});return;} json(response,201,await repository!.addJournalEntry(session.userId,body.body.trim())); return; }
+      if (request.method === "POST" && url.pathname === "/api/cycle") { const body=await readBody(request); if(typeof body.startDate!=="string"||!body.startDate.trim()){json(response,400,{error:"startDate is required"});return;} json(response,201,await repository!.logPeriod(session.userId,{startDate:body.startDate,flow:typeof body.flow==="string"?body.flow:undefined,endDate:typeof body.endDate==="string"?body.endDate:undefined})); return; }
+      if (request.method === "POST" && url.pathname === "/api/cycle/symptoms") { const body=await readBody(request); if(typeof body.symptom!=="string"||!body.symptom.trim()){json(response,400,{error:"symptom is required"});return;} json(response,201,await repository!.logCycleSymptom(session.userId,{symptom:body.symptom.trim(),recordedOn:typeof body.recordedOn==="string"?body.recordedOn:undefined})); return; }
       json(response, 404, { error: "Route not implemented" });
     } catch (error) {
       json(response, 401, { error: error instanceof Error ? error.message : "Authentication failed" });
