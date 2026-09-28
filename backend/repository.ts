@@ -2,6 +2,7 @@ export type HerRepository = {
   getProfile(userId: string): Promise<unknown>;
   getGoals(userId: string): Promise<unknown[]>;
   createGoal(userId: string, input: { title: string; targetAmount?: number; deadline?: string }): Promise<unknown>;
+  updateGoal(userId: string, goalId: string, input: { currentAmount?: number; title?: string; targetAmount?: number; deadline?: string; status?: "active" | "completed" }): Promise<unknown>;
   getDueTasks(userId: string): Promise<unknown[]>;
   createTask(userId: string, input: { title: string; dueDate?: string; category?: "study" | "career" | "personal" }): Promise<unknown>;
   completeTask(userId: string, taskId: string): Promise<unknown>;
@@ -51,6 +52,10 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
           status: "active",
         }),
       });
+      return rows?.[0] ?? null;
+    },
+    async updateGoal(_userId, goalId, input) {
+      const rows = await request<unknown[]>(`goals?id=eq.${encodeURIComponent(goalId)}`, { method: "PATCH", body: JSON.stringify({ current_amount: input.currentAmount, title: input.title, target_amount: input.targetAmount, deadline: input.deadline, status: input.status }) });
       return rows?.[0] ?? null;
     },
     async getDueTasks() {
