@@ -2,7 +2,7 @@
   "expo": {
     "name": "HER",
     "slug": "her",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -15,8 +15,8 @@
       "adaptiveIcon": {
         "backgroundColor": "#F8F5F2"
       },
-      "package": "com.herapp.life",
-      "versionCode": 2,
+      "package": "com.herapp.life.preview",
+      "versionCode": 1,
       "minSdkVersion": 24
     },
     "plugins": [
