@@ -112,6 +112,9 @@ export function createHerServer(options: HerServerOptions = {}) {
         if (body.reflection !== undefined && typeof body.reflection !== "string") { json(response,400,{error:"invalid reflection"}); return; }
         json(response,201,await repository!.saveWellnessCheckin(session.userId,{energy:body.energy as string|undefined,sleepMinutes:body.sleepMinutes as number|undefined,movementMinutes:body.movementMinutes as number|undefined,reflection:body.reflection as string|undefined})); return;
       }
+      if (request.method === "GET" && url.pathname === "/api/routines") { json(response, 200, await repository!.getRoutines(session.userId)); return; }
+      if (request.method === "GET" && url.pathname === "/api/important-dates") { json(response, 200, await repository!.getImportantDates(session.userId)); return; }
+      if (request.method === "GET" && url.pathname === "/api/relationship-notes") { json(response, 200, await repository!.getRelationshipNotes(session.userId)); return; }
       if (request.method === "GET" && url.pathname === "/api/expenses") { json(response, 200, await repository!.getExpenses(session.userId)); return; }
       if (request.method === "POST" && url.pathname === "/api/journal") { const body=await readBody(request); if(typeof body.body!=="string"||!body.body.trim()){json(response,400,{error:"body is required"});return;} json(response,201,await repository!.addJournalEntry(session.userId,body.body.trim())); return; }
       if (request.method === "POST" && url.pathname === "/api/cycle") { const body=await readBody(request); if(typeof body.startDate!=="string"||!body.startDate.trim()){json(response,400,{error:"startDate is required"});return;} json(response,201,await repository!.logPeriod(session.userId,{startDate:body.startDate,flow:typeof body.flow==="string"?body.flow:undefined,endDate:typeof body.endDate==="string"?body.endDate:undefined})); return; }
