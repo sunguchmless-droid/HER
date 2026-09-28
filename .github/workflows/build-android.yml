@@ -43,6 +43,12 @@ jobs:
           node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('build.json','utf8')); const b=Array.isArray(d)?d[0]:d; const url=b?.artifacts?.buildUrl || b?.artifacts?.[0]?.buildUrl; if(!url) throw new Error('No APK build URL found in EAS response'); console.log(url); fs.writeFileSync('build-url.txt',url);"
           curl -L "$(cat build-url.txt)" -o HER.apk
 
+      - name: Verify APK
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq apksigner
+          apksigner verify --verbose HER.apk
+
       - name: Publish APK release
         env:
           GH_TOKEN: ${{ github.token }}
