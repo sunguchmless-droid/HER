@@ -33,12 +33,19 @@ export default function App(){
   if (!accessToken || !api) return;
   let active = true;
   setRemoteStatus("loading");
-  api.getDashboard<{ goals?: Array<{ id:string; current_amount?:number }> }>().then((dashboard) => {
+  Promise.all([
+   api.getDashboard<{ goals?: Array<{ id:string; current_amount?:number }>; waterGlasses?:number; cycle?:{lastConfirmedPeriodDate?:string; predictedPeriodDate?:string; predictionConfidence?:string} }>(),
+   api.getJournal<Array<{ id:string; body:string; created_at?:string }>>()
+  ]).then(([dashboard, entries]) => {
    if (!active) return;
    const remoteGoal = dashboard.goals?.[0]?.current_amount;
    const remoteId = dashboard.goals?.[0]?.id;
    if (remoteId) setRemoteGoalId(remoteId);
    if (typeof remoteGoal === "number") setGoalAmount(remoteGoal);
+   if (typeof dashboard.waterGlasses === "number") setWater(Math.min(8, dashboard.waterGlasses));
+   const latest = entries?.[0]?.body;
+   if (latest) setSavedJournal(latest);
+   if (dashboard.cycle?.lastConfirmedPeriodDate) setPeriodStart(dashboard.cycle.lastConfirmedPeriodDate);
    setRemoteStatus("ready");
   }).catch(() => { if (active) setRemoteStatus("offline"); });
   return () => { active = false; };
