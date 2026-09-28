@@ -8,6 +8,8 @@ export type HerRepository = {
   completeTask(userId: string, taskId: string): Promise<unknown>;
   getTodayWater(userId: string): Promise<number>;
   addWaterGlass(userId: string): Promise<unknown>;
+  getWellnessCheckin(userId: string): Promise<unknown | null>;
+  saveWellnessCheckin(userId: string, input: { energy?: string; sleepMinutes?: number; movementMinutes?: number; reflection?: string }): Promise<unknown>;
   getExpenses(userId: string): Promise<unknown[]>;
   addExpense(userId: string, input: { category: string; amount: number; date?: string }): Promise<unknown>;
   getJournalEntries(userId: string): Promise<unknown[]>;
@@ -91,6 +93,18 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
       const today = new Date().toISOString().slice(0, 10);
       const rows = await request<unknown[]>(`water_logs`, { method: "POST", body: JSON.stringify({ recorded_on: today, glasses: 1 }) });
       return rows?.[0] ?? null;
+    },
+    async getWellnessCheckin() {
+      const today = new Date().toISOString().slice(0, 10);
+      const rows = await request<unknown[]>(`wellness_checkins?select=id,energy,sleep_minutes,movement_minutes,reflection,recorded_on&recorded_on=eq.${today}&limit=1`);
+      return rows[0] ?? null;
+    },
+    async saveWellnessCheckin(_userId, input) {
+      const today = new Date().toISOString().slice(0, 10);
+      const rows = await request<unknown[]>(`wellness_checkins?recorded_on=eq.${today}`, { method: "PATCH", body: JSON.stringify({ energy: input.energy ?? null, sleep_minutes: input.sleepMinutes ?? null, movement_minutes: input.movementMinutes ?? null, reflection: input.reflection ?? null, updated_at: new Date().toISOString() }) });
+      if (rows?.length) return rows[0];
+      const created = await request<unknown[]>(`wellness_checkins`, { method: "POST", body: JSON.stringify({ energy: input.energy ?? null, sleep_minutes: input.sleepMinutes ?? null, movement_minutes: input.movementMinutes ?? null, reflection: input.reflection ?? null, recorded_on: today }) });
+      return created?.[0] ?? null;
     },
     async getExpenses() {
       return request<unknown[]>(`expenses?select=id,category,amount,occurred_on&order=occurred_on.desc`);
