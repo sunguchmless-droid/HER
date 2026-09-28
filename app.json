@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "HER",
+    "slug": "her",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {"backgroundColor": "#F8F5F2"},
+    "ios": {"supportsTablet": true},
+    "android": {"adaptiveIcon": {"backgroundColor": "#F8F5F2"}}
+  }
+}
