@@ -15,6 +15,8 @@ export type HerRepository = {
   getCycleSummary(userId: string): Promise<unknown | null>;
   logPeriod(userId: string, input: { startDate: string; endDate?: string; flow?: string }): Promise<unknown>;
   logCycleSymptom(userId: string, input: { symptom: string; recordedOn?: string }): Promise<unknown>;
+  getAiPermissions(userId: string): Promise<any>;
+  logAiAction(userId: string, actionType: string, payload: unknown, status: string): Promise<unknown>;
 };
 
 export function createSupabaseRepository(accessToken: string, baseUrl: string, anonKey: string): HerRepository {
@@ -115,6 +117,14 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
     },
     async logPeriod(_userId, input) {
       const rows = await request<unknown[]>(`cycles`, { method: "POST", body: JSON.stringify({ start_date: input.startDate, end_date: input.endDate ?? null, flow: input.flow ?? null, confirmed: true }) });
+      return rows?.[0] ?? null;
+    },
+    async getAiPermissions() {
+      const rows = await request<any[]>(`ai_permissions?select=*`);
+      return rows[0] ?? { access_goals:true, access_tasks:true, access_money:false, access_wellness:false, access_cycle:false, access_journal:false, can_create_reminders:false, can_create_goals:false, can_add_expenses:false, can_edit_journal:false };
+    },
+    async logAiAction(_userId, actionType, payload, status) {
+      const rows = await request<unknown[]>(`ai_action_logs`, { method:"POST", body:JSON.stringify({ action_type:actionType, action_payload:payload, status }) });
       return rows?.[0] ?? null;
     },
     async logCycleSymptom(_userId, input) {
