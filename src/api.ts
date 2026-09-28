@@ -28,6 +28,7 @@ export function createHerApi(options: ApiClientOptions) {
     createImportantDate: <T>(body: unknown) => request<T>("/api/important-dates", { method: "POST", body: JSON.stringify(body) }),
     createRelationshipNote: <T>(body: unknown) => request<T>("/api/relationship-notes", { method: "POST", body: JSON.stringify(body) }),
     getReminders: <T>() => request<T>("/api/reminders"),
+    completeReminder: <T>(id: string) => request<T>(`/api/reminders/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ completed: true }) }),
     createReminder: <T>(body: unknown) => request<T>("/api/reminders", { method: "POST", body: JSON.stringify(body) }),
     addWaterGlass: <T>() => request<T>("/api/water", { method: "POST" }),
     getWellness: <T>() => request<T>("/api/wellness"),
