@@ -193,6 +193,10 @@ create table if not exists ai_permissions (
  updated_at timestamptz not null default now()
 );
 
+-- Forward-compatible permission columns for existing databases.
+alter table ai_permissions add column if not exists access_routines boolean not null default false;
+alter table ai_permissions add column if not exists can_create_tasks boolean not null default false;
+
 create index if not exists goals_user_idx on goals(user_id);
 create index if not exists tasks_user_due_idx on tasks(user_id,due_at);
 create index if not exists expenses_user_date_idx on expenses(user_id,occurred_on);
