@@ -1,5 +1,3 @@
-import { HerAction } from "../src/herAI";
-
 type AiPermissions = {
   access_goals?: boolean; access_tasks?: boolean; access_money?: boolean;
   can_create_goals?: boolean; can_add_expenses?: boolean;
@@ -47,5 +45,5 @@ export async function askOpenAI(apiKey: string, message: string, context: AiCont
   if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
   const payload = await response.json() as { output_text?: string };
   if (!payload.output_text) throw new Error("OpenAI returned no structured output.");
-  return JSON.parse(payload.output_text) as { reply: string; action: HerAction & Record<string, unknown> };
+  return JSON.parse(payload.output_text) as { reply: string; action: Record<string, unknown> };
 }
