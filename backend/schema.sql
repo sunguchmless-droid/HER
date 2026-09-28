@@ -201,42 +201,6 @@ create index if not exists cycles_user_date_idx on cycles(user_id,start_date des
 create index if not exists ai_messages_conversation_idx on ai_messages(conversation_id,created_at);
 
 -- Row-level security: every user-owned table is isolated to auth.uid().
-alter table profiles enable row level security;
-alter table goals enable row level security;
-alter table tasks enable row level security;
-alter table expenses enable row level security;
-alter table routines enable row level security;
-alter table routine_items enable row level security;
-alter table important_dates enable row level security;
-alter table relationship_notes enable row level security;
-alter table journal_entries enable row level security;
-alter table mood_checkins enable row level security;
-alter table water_logs enable row level security;
-alter table wellness_checkins enable row level security;
-alter table cycles enable row level security;
-alter table cycle_predictions enable row level security;
-alter table cycle_symptoms enable row level security;
-alter table ai_conversations enable row level security;
-alter table ai_messages enable row level security;
-alter table ai_action_logs enable row level security;
-alter table ai_permissions enable row level security;
-
-create policy if not exists profiles_own on profiles for all using (id = auth.uid()) with check (id = auth.uid());
-create policy if not exists goals_own on goals for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists tasks_own on tasks for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists expenses_own on expenses for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists routines_own on routines for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists journal_own on journal_entries for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists mood_own on mood_checkins for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists water_own on water_logs for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists cycles_own on cycles for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists predictions_own on cycle_predictions for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists ai_conversations_own on ai_conversations for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists ai_messages_own on ai_messages for all using (conversation_id in (select id from ai_conversations where user_id = auth.uid()));
-create policy if not exists ai_actions_own on ai_action_logs for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy if not exists ai_permissions_own on ai_permissions for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-
-
 drop policy if exists profiles_own on profiles;
 create policy profiles_own on profiles for all using (id = auth.uid()) with check (id = auth.uid());
 drop policy if exists goals_own on goals;
