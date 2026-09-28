@@ -19,8 +19,5 @@
       "versionCode": 1,
       "minSdkVersion": 24
     },
-    "plugins": [
-      "expo-notifications"
-    ]
   }
 }
