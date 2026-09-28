@@ -44,6 +44,7 @@ export default function App(){
  const [mood,setMood]=useState<Mood>(initialData.mood ?? "Okay");
  const [water,setWater]=useState(initialData.waterGlasses);
  const [goalAmount,setGoalAmount]=useState(initialData.goals[0]?.currentAmount ?? 0);
+ const [remoteGoalId,setRemoteGoalId]=useState<string | null>(null);
  const [journal,setJournal]=useState("");
  const [savedJournal,setSavedJournal]=useState("");
  const [aiInput,setAiInput]=useState("");
