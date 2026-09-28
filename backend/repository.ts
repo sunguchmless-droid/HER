@@ -214,7 +214,7 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
     async completeReminder(_userId, reminderId) { const rows=await request<unknown[]>(`reminders?id=eq.${encodeURIComponent(reminderId)}`,{method:"PATCH",body:JSON.stringify({completed:true})}); return rows?.[0]??null; },
     async getAiPermissions() {
       const rows = await request<any[]>(`ai_permissions?select=*`);
-      return rows[0] ?? { access_goals:true, access_tasks:true, access_money:false, access_wellness:false, access_cycle:false, access_journal:false, can_create_reminders:false, can_create_goals:false, can_add_expenses:false, can_edit_journal:false };
+      return rows[0] ?? { access_goals:true, access_tasks:true, access_money:false, access_wellness:false, access_cycle:false, access_routines:false, access_journal:false, can_create_tasks:false, can_create_reminders:false, can_create_goals:false, can_add_expenses:false, can_edit_journal:false };
     },
     async logAiAction(_userId, actionType, payload, status) {
       const rows = await request<unknown[]>(`ai_action_logs`, { method:"POST", body:JSON.stringify({ action_type:actionType, action_payload:payload, status }) });
