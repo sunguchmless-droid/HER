@@ -100,6 +100,7 @@ export function createHerServer(options: HerServerOptions = {}) {
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/reminders") { json(response, 200, await repository!.getReminders(session.userId)); return; }
+      if (request.method === "PATCH" && url.pathname.startsWith("/api/reminders/")) { const reminderId=url.pathname.split("/").pop(); if(!reminderId){json(response,400,{error:"reminder id is required"});return;} json(response,200,await repository!.completeReminder(session.userId,reminderId)); return; }
       if (request.method === "POST" && url.pathname === "/api/reminders") {
         const body=await readBody(request);
         if(typeof body.title!=="string"||!body.title.trim()||typeof body.dueAt!=="string"){json(response,400,{error:"title and dueAt are required"});return;}
