@@ -21,6 +21,14 @@ export function createHerApi(options: ApiClientOptions) {
     createTask: <T>(body: unknown) => request<T>("/api/tasks", { method: "POST", body: JSON.stringify(body) }),
     getJournal: <T>() => request<T>("/api/journal"),
     createJournalEntry: <T>(body: unknown) => request<T>("/api/journal", { method: "POST", body: JSON.stringify(body) }),
+    createGoal: <T>(body: unknown) => request<T>("/api/goals", { method: "POST", body: JSON.stringify(body) }),
+    getTasks: <T>() => request<T>("/api/tasks"),
+    createTask: <T>(body: unknown) => request<T>("/api/tasks", { method: "POST", body: JSON.stringify(body) }),
+    addExpense: <T>(body: unknown) => request<T>("/api/expenses", { method: "POST", body: JSON.stringify(body) }),
+    getExpenses: <T>() => request<T>("/api/expenses"),
+    addWaterGlass: <T>() => request<T>("/api/water", { method: "POST" }),
+    getJournal: <T>() => request<T>("/api/journal"),
+    createJournalEntry: <T>(body: unknown) => request<T>("/api/journal", { method: "POST", body: JSON.stringify(body) }),
     askHerAI: <T>(body: unknown) => request<T>("/api/her-ai", { method: "POST", body: JSON.stringify(body) }),
   };
 }
