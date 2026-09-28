@@ -1,4 +1,5 @@
 import { StatusBar } from "expo-status-bar";
+import * as Notifications from "expo-notifications";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { herStore } from "./src/store";
 import { createHerApi } from "./src/api";
@@ -10,12 +11,34 @@ type Mood = "Great" | "Okay" | "Low" | "Tired";
 type Tab = "Home" | "Wellness" | "Goals" | "Journal" | "HER AI";
 type Module = "Cycle & Period" | "Self-Care" | "Relationships" | "Money" | "Study & Career";
 
+Notifications.setNotificationHandler({
+ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
+});
+
 const colors={cream:"#F8F5F2",ink:"#2D2A2A",muted:"#817A7A",blush:"#F1DDE3",lavender:"#DDD8EC",sage:"#DDE8DE",blue:"#DCE8F2",white:"#FFFFFF",line:"#E9E2DF",peach:"#F3E2D8"};
 
 const quickAccess: [Module,string,string][]=[
  ["Cycle & Period","◐",colors.blush],["Wellness","♡",colors.sage],["Self-Care","✦",colors.lavender],["Relationships","⌁",colors.peach],
  ["Money","KSh",colors.blue],["Study & Career","✓",colors.sage],["Goals","◎",colors.blush],["Journal","▤",colors.lavender]
 ];
+
+
+async function scheduleHerReminders(items: Array<{id:string;title:string;due_at:string}>) {
+ try {
+  let permission = await Notifications.getPermissionsAsync();
+  if (!permission.granted && permission.canAskAgain) permission = await Notifications.requestPermissionsAsync();
+  if (!permission.granted) return;
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  for (const item of items.slice(0, 30)) {
+   const timestamp = Date.parse(item.due_at);
+   if (Number.isNaN(timestamp) || timestamp <= Date.now() + 5000) continue;
+   await Notifications.scheduleNotificationAsync({
+    content: { title: "HER reminder", body: item.title, data: { reminderId: item.id } },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(timestamp) },
+   });
+  }
+ } catch { }
+}
 
 export default function App(){
  const [accessToken,setAccessToken]=useState<string | null>(null);
@@ -41,8 +64,9 @@ export default function App(){
    api.getRoutines<Array<{id:string;title:string;time_of_day:string;routine_items?:Array<{title:string;completed:boolean}>}>>(),
    api.getImportantDates<Array<{id:string;title:string;date_on:string;notes?:string}>>(),
    api.getRelationshipNotes<Array<{id:string;title?:string;body:string;created_at?:string}>>(),
-   api.getWellness<{energy?:string;sleep_minutes?:number;movement_minutes?:number;reflection?:string} | null>()
-   ]).then(([dashboard, entries, expenseRows, taskRows, routineRows, dateRows, noteRows, wellness]) => {
+   api.getWellness<{energy?:string;sleep_minutes?:number;movement_minutes?:number;reflection?:string} | null>(),
+   api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>()
+   ]).then(([dashboard, entries, expenseRows, taskRows, routineRows, dateRows, noteRows, wellness, reminderRows]) => {
    if (!active) return;
    const remoteGoal = dashboard.goals?.[0]?.current_amount;
    const remoteId = dashboard.goals?.[0]?.id;
@@ -59,6 +83,8 @@ export default function App(){
    setRoutines(routineRows ?? []);
    setImportantDates(dateRows ?? []);
    setRelationshipNotes(noteRows ?? []);
+   setReminders(reminderRows ?? []);
+   void scheduleHerReminders(reminderRows ?? []);
    if (wellness?.energy) setEnergy(wellness.energy);
    if (typeof wellness?.sleep_minutes === "number") setSleep(`${Math.floor(wellness.sleep_minutes/60)}h ${wellness.sleep_minutes%60}m`);
    if (typeof wellness?.movement_minutes === "number") setMovement(`${wellness.movement_minutes} min`);
