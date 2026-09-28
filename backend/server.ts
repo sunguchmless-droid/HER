@@ -77,6 +77,10 @@ export function createHerServer(options: HerServerOptions = {}) {
         if (permissions.access_goals) context.goals = await repository.getGoals(session.userId);
         if (permissions.access_tasks) context.tasks = await repository.getDueTasks(session.userId);
         if (permissions.access_money) context.expenses = await repository.getExpenses(session.userId);
+        if (permissions.access_wellness) context.wellness = await repository.getWellnessCheckin(session.userId);
+        if (permissions.access_cycle) context.cycle = await repository.getCycleSummary(session.userId);
+        if (permissions.access_routines) context.routines = await repository.getRoutines(session.userId);
+        if (permissions.access_journal) context.journal = await repository.getJournalEntries(session.userId);
         const result = await askOpenAI(process.env.OPENAI_API_KEY, message, context, permissions);
         const action = result.action as any;
         let executedAction = { ...action };
@@ -84,7 +88,7 @@ export function createHerServer(options: HerServerOptions = {}) {
         if (action.type === "create_goal" && permissions.can_create_goals && typeof action.title === "string") {
           executedAction = await repository.createGoal(session.userId, { title: action.title, targetAmount: typeof action.targetAmount === "number" ? action.targetAmount : undefined, deadline: typeof action.deadline === "string" ? action.deadline : undefined }) as any;
           status = "completed";
-        } else if (action.type === "create_task" && permissions.access_tasks && typeof action.title === "string") {
+        } else if (action.type === "create_task" && permissions.can_create_tasks && typeof action.title === "string") {
           executedAction = await repository.createTask(session.userId, { title: action.title, dueDate: typeof action.dueDate === "string" ? action.dueDate : undefined, category: ["study","career","personal"].includes(action.category) ? action.category : "personal" }) as any;
           status = "completed";
         } else if (action.type === "create_reminder" && permissions.can_create_reminders && typeof action.title === "string" && typeof action.dueDate === "string") {
