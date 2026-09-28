@@ -12,8 +12,12 @@ export type HerRepository = {
   saveWellnessCheckin(userId: string, input: { energy?: string; sleepMinutes?: number; movementMinutes?: number; reflection?: string }): Promise<unknown>;
   getExpenses(userId: string): Promise<unknown[]>;
   getRoutines(userId: string): Promise<unknown[]>;
+  createRoutine(userId: string, input: { title: string; timeOfDay: "morning" | "evening" | "custom" }): Promise<unknown>;
+  addRoutineItem(userId: string, routineId: string, title: string): Promise<unknown>;
   getImportantDates(userId: string): Promise<unknown[]>;
+  createImportantDate(userId: string, input: { title: string; dateOn: string; notes?: string }): Promise<unknown>;
   getRelationshipNotes(userId: string): Promise<unknown[]>;
+  createRelationshipNote(userId: string, input: { title?: string; body: string }): Promise<unknown>;
   addExpense(userId: string, input: { category: string; amount: number; date?: string }): Promise<unknown>;
   getJournalEntries(userId: string): Promise<unknown[]>;
   addJournalEntry(userId: string, body: string): Promise<unknown>;
@@ -112,8 +116,20 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
     async getRoutines() {
       return request<unknown[]>(`routines?select=id,title,time_of_day,routine_items(id,title,sort_order,completed)&order=created_at.asc`);
     },
+    async createRoutine(_userId, input) {
+      const rows=await request<unknown[]>(`routines`,{method:"POST",body:JSON.stringify({title:input.title,time_of_day:input.timeOfDay})}); return rows?.[0]??null;
+    },
+    async addRoutineItem(_userId,routineId,title) {
+      const rows=await request<unknown[]>(`routine_items`,{method:"POST",body:JSON.stringify({routine_id:routineId,title,sort_order:0,completed:false})}); return rows?.[0]??null;
+    },
     async getImportantDates() {
       return request<unknown[]>(`important_dates?select=id,title,date_on,notes&order=date_on.asc`);
+    },
+    async createImportantDate(_userId,input) {
+      const rows=await request<unknown[]>(`important_dates`,{method:"POST",body:JSON.stringify({title:input.title,date_on:input.dateOn,notes:input.notes??null})}); return rows?.[0]??null;
+    },
+    async createRelationshipNote(_userId,input) {
+      const rows=await request<unknown[]>(`relationship_notes`,{method:"POST",body:JSON.stringify({title:input.title??null,body:input.body})}); return rows?.[0]??null;
     },
     async getRelationshipNotes() {
       return request<unknown[]>(`relationship_notes?select=id,title,body,created_at&order=created_at.desc`);
