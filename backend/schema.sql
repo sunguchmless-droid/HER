@@ -68,6 +68,27 @@ create table if not exists routine_items (
  title text not null, sort_order integer not null default 0, completed boolean not null default false
 );
 
+create table if not exists important_dates (
+ id uuid primary key default gen_random_uuid(),
+ user_id uuid not null references profiles(id) on delete cascade,
+ title text not null,
+ date_on date not null,
+ notes text,
+ created_at timestamptz not null default now()
+);
+
+create table if not exists relationship_notes (
+ id uuid primary key default gen_random_uuid(),
+ user_id uuid not null references profiles(id) on delete cascade,
+ title text,
+ body text not null,
+ created_at timestamptz not null default now(),
+ updated_at timestamptz not null default now()
+);
+
+create index if not exists important_dates_user_date_idx on important_dates(user_id,date_on);
+create index if not exists relationship_notes_user_date_idx on relationship_notes(user_id,created_at desc);
+
 create table if not exists journal_entries (
  id uuid primary key default gen_random_uuid(),
  user_id uuid not null references profiles(id) on delete cascade,
@@ -171,6 +192,9 @@ alter table goals enable row level security;
 alter table tasks enable row level security;
 alter table expenses enable row level security;
 alter table routines enable row level security;
+alter table routine_items enable row level security;
+alter table important_dates enable row level security;
+alter table relationship_notes enable row level security;
 alter table journal_entries enable row level security;
 alter table mood_checkins enable row level security;
 alter table water_logs enable row level security;
@@ -209,6 +233,12 @@ drop policy if exists expenses_own on expenses;
 create policy expenses_own on expenses for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists routines_own on routines;
 create policy routines_own on routines for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists routine_items_own on routine_items;
+create policy routine_items_own on routine_items for all using (routine_id in (select id from routines where user_id = auth.uid())) with check (routine_id in (select id from routines where user_id = auth.uid()));
+drop policy if exists important_dates_own on important_dates;
+create policy important_dates_own on important_dates for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists relationship_notes_own on relationship_notes;
+create policy relationship_notes_own on relationship_notes for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists journal_own on journal_entries;
 create policy journal_own on journal_entries for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists mood_own on mood_checkins;
