@@ -62,6 +62,27 @@ export function createHerServer(options: HerServerOptions = {}) {
         json(response, 200, dashboard);
         return;
       }
+      if (request.method === "POST" && url.pathname === "/api/her-ai") {
+        const body = await readBody(request);
+        const message = typeof body.message === "string" ? body.message.trim() : "";
+        if (!message) { json(response, 400, { error: "message is required" }); return; }
+        const permissions = await repository!.getAiPermissions(session.userId);
+        const lower = message.toLowerCase();
+        let action: any = { type: "none" };
+        let reply = "I can help you turn that into a simple next step.";
+        if ((lower.includes("savings goal") || lower.includes("save ksh")) && permissions.can_create_goals) {
+          action = { type: "create_goal", title: "Savings goal" };
+          reply = "I can help set up a savings goal. Tell me the amount and deadline you want.";
+        } else if ((lower.includes("task") || lower.includes("assignment")) && permissions.access_tasks) {
+          action = { type: "create_task", title: message };
+          reply = "I can turn that into a task. I’ve kept the wording so you can refine the details.";
+        } else if (lower.includes("expense") && permissions.can_add_expenses) {
+          reply = "I can add an expense once you give me the category and amount.";
+        }
+        await repository!.logAiAction(session.userId, action.type, action, action.type === "none" ? "rejected" : "requested");
+        json(response, 200, { reply, action });
+        return;
+      }
       if (request.method === "GET" && url.pathname === "/api/goals") { json(response, 200, await repository!.getGoals(session.userId)); return; }
       if (request.method === "GET" && url.pathname === "/api/tasks") { json(response, 200, await repository!.getDueTasks(session.userId)); return; }
       if (request.method === "POST" && url.pathname === "/api/water") { json(response, 201, await repository!.addWaterGlass(session.userId)); return; }
