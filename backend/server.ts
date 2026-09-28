@@ -98,6 +98,7 @@ export function createHerServer(options: HerServerOptions = {}) {
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/goals") { json(response, 200, await repository!.getGoals(session.userId)); return; }
+      if (request.method === "POST" && url.pathname === "/api/goals") { const body=await readBody(request); if(typeof body.title!=="string"||!body.title.trim()){json(response,400,{error:"title is required"});return;} json(response,201,await repository!.createGoal(session.userId,{title:body.title.trim(),targetAmount:typeof body.targetAmount==="number"?body.targetAmount:undefined,deadline:typeof body.deadline==="string"?body.deadline:undefined})); return; }
       if (request.method === "GET" && url.pathname === "/api/tasks") { json(response, 200, await repository!.getDueTasks(session.userId)); return; }
       if (request.method === "POST" && url.pathname === "/api/water") { json(response, 201, await repository!.addWaterGlass(session.userId)); return; }
       if (request.method === "GET" && url.pathname === "/api/journal") { json(response, 200, await repository!.getJournalEntries(session.userId)); return; }
