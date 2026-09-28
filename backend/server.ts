@@ -87,6 +87,8 @@ export function createHerServer(options: HerServerOptions = {}) {
         } else if (action.type === "create_task" && permissions.access_tasks && typeof action.title === "string") {
           executedAction = await repository.createTask(session.userId, { title: action.title, dueDate: typeof action.dueDate === "string" ? action.dueDate : undefined, category: ["study","career","personal"].includes(action.category) ? action.category : "personal" }) as any;
           status = "completed";
+        } else if (action.type === "create_reminder" && permissions.can_create_reminders && typeof action.title === "string" && typeof action.dueDate === "string") {
+          const parsed=Date.parse(action.dueDate); if (!Number.isNaN(parsed)) { executedAction = await repository.createReminder(session.userId,{ title: action.title, dueAt: new Date(parsed).toISOString(), source: "ai" }) as any; status = "completed"; }
         } else if (action.type === "add_expense" && permissions.can_add_expenses && typeof action.category === "string" && typeof action.amount === "number") {
           executedAction = await repository.addExpense(session.userId, { category: action.category, amount: action.amount, date: typeof action.date === "string" ? action.date : undefined }) as any;
           status = "completed";
