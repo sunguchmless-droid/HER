@@ -31,14 +31,10 @@ export function createHerServer() {
       return;
     }
 
-    // Token verification is intentionally isolated here. The production
-    // adapter will verify the Supabase JWT and derive the user ID from it.
-    const context: ServerContext = { userId: "verified-user", accessToken: token };
-
-    if (request.method === "GET" && url.pathname === "/api/dashboard") {
-      json(response, 200, { userId: context.userId, goals: [], tasks: [], waterGlasses: 0 });
-      return;
-    }
+    // Do not trust the token as a user ID. A real auth adapter must verify it
+    // and derive the user ID before any user-owned data is accessed.
+    json(response, 501, { error: "Authentication adapter not configured" });
+    return;
 
     json(response, 404, { error: "Route not implemented" });
   });
