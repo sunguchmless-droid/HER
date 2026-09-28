@@ -12,6 +12,8 @@ export type HerRepository = {
   getJournalEntries(userId: string): Promise<unknown[]>;
   addJournalEntry(userId: string, body: string): Promise<unknown>;
   getCycleSummary(userId: string): Promise<unknown | null>;
+  logPeriod(userId: string, input: { startDate: string; endDate?: string; flow?: string }): Promise<unknown>;
+  logCycleSymptom(userId: string, input: { symptom: string; recordedOn?: string }): Promise<unknown>;
 };
 
 export function createSupabaseRepository(accessToken: string, baseUrl: string, anonKey: string): HerRepository {
@@ -98,7 +100,21 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
       return rows?.[0] ?? null;
     },
     async getCycleSummary() {
-      return null;
+      const cycles = await request<Array<{ start_date: string; end_date?: string; flow?: string }>>(`cycles?select=start_date,end_date,flow&order=start_date.desc&limit=5`);
+      const predictions = await request<Array<{ predicted_start_date: string; confidence?: string }>>(`cycle_predictions?select=predicted_start_date,confidence&order=created_at.desc&limit=1`);
+      const latest = cycles[0];
+      const previous = cycles[1];
+      const cycleLength = latest && previous ? Math.max(1, Math.round((new Date(latest.start_date).getTime() - new Date(previous.start_date).getTime()) / 86400000)) : 28;
+      const cycleDay = latest ? Math.max(1, Math.floor((Date.now() - new Date(latest.start_date).getTime()) / 86400000) + 1) : 1;
+      return { cycleDay, typicalCycleLength: cycleLength, lastConfirmedPeriodDate: latest?.start_date, predictedPeriodDate: predictions[0]?.predicted_start_date, predictionConfidence: predictions[0]?.confidence, history: cycles };
+    },
+    async logPeriod(_userId, input) {
+      const rows = await request<unknown[]>(`cycles`, { method: "POST", body: JSON.stringify({ start_date: input.startDate, end_date: input.endDate ?? null, flow: input.flow ?? null, confirmed: true }) });
+      return rows?.[0] ?? null;
+    },
+    async logCycleSymptom(_userId, input) {
+      // Symptoms are represented through mood/wellness until a dedicated symptoms table is added.
+      return { symptom: input.symptom, recordedOn: input.recordedOn ?? new Date().toISOString().slice(0, 10) };
     },
   };
 }
