@@ -21,6 +21,8 @@ export function createHerApi(options: ApiClientOptions) {
     addExpense: <T>(body: unknown) => request<T>("/api/expenses", { method: "POST", body: JSON.stringify(body) }),
     getExpenses: <T>() => request<T>("/api/expenses"),
     addWaterGlass: <T>() => request<T>("/api/water", { method: "POST" }),
+    getWellness: <T>() => request<T>("/api/wellness"),
+    saveWellness: <T>(body: unknown) => request<T>("/api/wellness", { method: "POST", body: JSON.stringify(body) }),
     getJournal: <T>() => request<T>("/api/journal"),
     createJournalEntry: <T>(body: unknown) => request<T>("/api/journal", { method: "POST", body: JSON.stringify(body) }),
     logPeriod: <T>(body: unknown) => request<T>("/api/cycle", { method: "POST", body: JSON.stringify(body) }),
