@@ -97,6 +97,15 @@ export function createHerServer(options: HerServerOptions = {}) {
         json(response, 200, { reply: result.reply, action: status === "completed" ? { type: action.type, result: executedAction } : action, status });
         return;
       }
+      if (request.method === "GET" && url.pathname === "/api/reminders") { json(response, 200, await repository!.getReminders(session.userId)); return; }
+      if (request.method === "POST" && url.pathname === "/api/reminders") {
+        const body=await readBody(request);
+        if(typeof body.title!=="string"||!body.title.trim()||typeof body.dueAt!=="string"){json(response,400,{error:"title and dueAt are required"});return;}
+        const parsed=Date.parse(body.dueAt); if(Number.isNaN(parsed)){json(response,400,{error:"invalid dueAt"});return;}
+        const sources=["manual","cycle","routine","study","relationship","ai"];
+        const source=typeof body.source==="string"&&sources.includes(body.source)?body.source as any:"manual";
+        json(response,201,await repository!.createReminder(session.userId,{title:body.title.trim(),dueAt:new Date(parsed).toISOString(),source})); return;
+      }
       if (request.method === "GET" && url.pathname === "/api/goals") { json(response, 200, await repository!.getGoals(session.userId)); return; }
       if (request.method === "POST" && url.pathname === "/api/goals") { const body=await readBody(request); if(typeof body.title!=="string"||!body.title.trim()){json(response,400,{error:"title is required"});return;} json(response,201,await repository!.createGoal(session.userId,{title:body.title.trim(),targetAmount:typeof body.targetAmount==="number"?body.targetAmount:undefined,deadline:typeof body.deadline==="string"?body.deadline:undefined})); return; }
       if (request.method === "GET" && url.pathname === "/api/tasks") { json(response, 200, await repository!.getDueTasks(session.userId)); return; }
