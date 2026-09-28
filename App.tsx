@@ -34,7 +34,7 @@ export default function App(){
   let active = true;
   setRemoteStatus("loading");
   Promise.all([
-   api.getDashboard<{ goals?: Array<{ id:string; current_amount?:number; target_amount?:number }>; waterGlasses?:number; cycle?:{lastConfirmedPeriodDate?:string; predictedPeriodDate?:string; predictionConfidence?:string} }>(),
+   api.getDashboard<{ profile?:{display_name?:string}; goals?: Array<{ id:string; current_amount?:number; target_amount?:number }>; tasks?: Array<{title?:string;due_at?:string}>; waterGlasses?:number; cycle?:{lastConfirmedPeriodDate?:string; predictedPeriodDate?:string; predictionConfidence?:string} }>(),
    api.getJournal<Array<{ id:string; body:string; created_at?:string }>>(),
    api.getWellness<{energy?:string;sleep_minutes?:number;movement_minutes?:number;reflection?:string} | null>()
   ]).then(([dashboard, entries, wellness]) => {
@@ -42,6 +42,8 @@ export default function App(){
    const remoteGoal = dashboard.goals?.[0]?.current_amount;
    const remoteId = dashboard.goals?.[0]?.id;
    if (remoteId) setRemoteGoalId(remoteId);
+   if (dashboard.profile?.display_name) setDisplayName(dashboard.profile.display_name);
+   if (dashboard.tasks?.[0]?.title) setNextTask(dashboard.tasks[0].title);
    if (typeof remoteGoal === "number") setGoalAmount(remoteGoal);
    if (typeof dashboard.goals?.[0]?.target_amount === "number") setRemoteGoalTarget(dashboard.goals[0].target_amount);
    if (typeof dashboard.waterGlasses === "number") setWater(Math.min(8, dashboard.waterGlasses));
@@ -52,6 +54,7 @@ export default function App(){
    if (typeof wellness?.movement_minutes === "number") setMovement(`${wellness.movement_minutes} min`);
    if (wellness?.reflection) setReflection(wellness.reflection);
    if (dashboard.cycle?.lastConfirmedPeriodDate) setPeriodStart(dashboard.cycle.lastConfirmedPeriodDate);
+   if (dashboard.cycle?.predictedPeriodDate) { const d=new Date(dashboard.cycle.predictedPeriodDate); const days=Math.max(0,Math.ceil((d.getTime()-Date.now())/86400000)); setCyclePrediction(`Period predicted in ${days} day${days===1?"":"s"}`); setCycleConfidence(dashboard.cycle.predictionConfidence ? `${dashboard.cycle.predictionConfidence[0].toUpperCase()+dashboard.cycle.predictionConfidence.slice(1)} confidence` : "Prediction"); }
    setRemoteStatus("ready");
   }).catch(() => { if (active) setRemoteStatus("offline"); });
   return () => { active = false; };
@@ -61,6 +64,10 @@ export default function App(){
  const [goalAmount,setGoalAmount]=useState(initialData.goals[0]?.currentAmount ?? 0);
  const [remoteGoalId,setRemoteGoalId]=useState<string | null>(null);
  const [remoteGoalTarget,setRemoteGoalTarget]=useState(20000);
+ const [displayName,setDisplayName]=useState("there");
+ const [cyclePrediction,setCyclePrediction]=useState("Period prediction unavailable");
+ const [cycleConfidence,setCycleConfidence]=useState("Prediction");
+ const [nextTask,setNextTask]=useState("No upcoming tasks");
  const [journal,setJournal]=useState("");
  const [savedJournal,setSavedJournal]=useState("");
  const [aiInput,setAiInput]=useState("");
@@ -88,7 +95,7 @@ export default function App(){
   } finally { setAiBusy(false); }
  };
  const toggleCycleSymptom=(symptom:string)=>setCycleSymptoms((current)=>current.includes(symptom)?current.filter((item)=>item!==symptom):[...current,symptom]);
- const greeting=useMemo(()=>{const h=new Date().getHours();return h<12?"Good morning, Amina":h<18?"Good afternoon, Amina":"Good evening, Amina"},[]);
+ const greeting=useMemo(()=>{const h=new Date().getHours();return h<12?"Good morning, {displayName}":h<18?"Good afternoon, Amina":"Good evening, Amina"},[]);
  if(!accessToken) return <><StatusBar style="dark"/><AuthScreen onAuthenticated={handleAuthenticated}/></>;
 
  const goTab=(next:Tab)=>{setModule(null);setTab(next)};
@@ -102,9 +109,9 @@ export default function App(){
   </View>
   <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Today</Text><Text style={styles.sectionLink}>Your overview</Text></View>
   <View style={styles.todayGrid}>
-   <TodayCard icon="◐" tint={colors.blush} title="Cycle" body="Period predicted in 6 days" footer="Prediction"/>
+   <TodayCard icon="◐" tint={colors.blush} title="Cycle" body={cyclePrediction} footer={cycleConfidence}/>
    <TodayCard icon="◎" tint={colors.sage} title="Savings" body="Save KSh 700 toward your goal" footer="KSh {goalAmount.toLocaleString()} saved"/>
-   <TodayCard icon="✓" tint={colors.lavender} title="Study" body="Assignment due Thursday" footer="2 tasks today"/>
+   <TodayCard icon="✓" tint={colors.lavender} title="Study" body={nextTask} footer="2 tasks today"/>
    <TodayCard icon="◌" tint={colors.blue} title="Water" body={water+"/8 glasses"} footer={<Pressable onPress={async ()=>{herStore.addWaterGlass();setWater(herStore.get().waterGlasses);try{await api?.addWaterGlass()}catch{setRemoteStatus("offline")}}}><Text style={styles.actionLink}>+ Add glass</Text></Pressable>}/>
   </View>
   <View style={styles.reminderCard}><View style={styles.reminderIcon}><Text>✦</Text></View><View style={{flex:1}}><Text style={styles.cardEyebrow}>EVENING ROUTINE</Text><Text style={styles.reminderTitle}>Skincare at 8:00 PM</Text><Text style={styles.reminderBody}>A small thing for you, by you.</Text></View><Text style={styles.chevron}>›</Text></View>
