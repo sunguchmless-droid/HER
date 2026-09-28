@@ -31,3 +31,10 @@ The default palette is soft and premium. Color customization will be added as a 
 - Authenticated API boundary documented in `backend/api-contract.md`
 - Security and sensitive-data rules in `backend/security.md`
 - HER AI actions are validated server-side and logged
+
+
+## Persistence and authentication foundation
+- `.env.example` documents client/server configuration without secrets.
+- `backend/auth-contract.md` defines the authenticated user boundary.
+- `backend/repository-contract.md` defines user-scoped persistence functions.
+- `backend/config.ts` validates required server configuration.
