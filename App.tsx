@@ -1,0 +1,232 @@
+import { StatusBar } from "expo-status-bar";
+import * as Notifications from "expo-notifications";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { herStore } from "./src/store";
+import { createHerApi } from "./src/api";
+import { AuthScreen } from "./src/AuthScreen";
+import { supabase } from "./src/supabase";
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+
+type Mood = "Great" | "Okay" | "Low" | "Tired";
+type Tab = "Home" | "Wellness" | "Goals" | "Journal" | "HER AI";
+type Module = "Cycle & Period" | "Self-Care" | "Relationships" | "Money" | "Study & Career";
+
+Notifications.setNotificationHandler({
+ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
+});
+
+const colors={cream:"#F8F5F2",ink:"#2D2A2A",muted:"#817A7A",blush:"#F1DDE3",lavender:"#DDD8EC",sage:"#DDE8DE",blue:"#DCE8F2",white:"#FFFFFF",line:"#E9E2DF",peach:"#F3E2D8"};
+
+const quickAccess: [Module,string,string][]=[
+ ["Cycle & Period","◐",colors.blush],["Wellness","♡",colors.sage],["Self-Care","✦",colors.lavender],["Relationships","⌁",colors.peach],
+ ["Money","KSh",colors.blue],["Study & Career","✓",colors.sage],["Goals","◎",colors.blush],["Journal","▤",colors.lavender]
+];
+
+
+async function scheduleHerReminders(items: Array<{id:string;title:string;due_at:string}>) {
+ try {
+  let permission = await Notifications.getPermissionsAsync();
+  if (!permission.granted && permission.canAskAgain) permission = await Notifications.requestPermissionsAsync();
+  if (!permission.granted) return;
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  for (const item of items.slice(0, 30)) {
+   const timestamp = Date.parse(item.due_at);
+   if (Number.isNaN(timestamp) || timestamp <= Date.now() + 5000) continue;
+   await Notifications.scheduleNotificationAsync({
+    content: { title: "HER reminder", body: item.title, data: { reminderId: item.id } },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(timestamp) },
+   });
+  }
+ } catch { }
+}
+
+export default function App(){
+ const [accessToken,setAccessToken]=useState<string | null>(null);
+ const [remoteStatus,setRemoteStatus]=useState<"idle"|"loading"|"ready"|"offline">("idle");
+ const handleAuthenticated=useCallback((token:string)=>setAccessToken(token),[]);
+ useEffect(()=>{if(!supabase)return;supabase.auth.getSession().then(({data})=>setAccessToken(data.session?.access_token??null));const {data}=supabase.auth.onAuthStateChange((_event,session)=>setAccessToken(session?.access_token??null));return()=>data.subscription.unsubscribe()},[]);
+ const [tab,setTab]=useState<Tab>("Home");
+ const [module,setModule]=useState<Module|null>(null);
+ const initialData = herStore.get();
+ const api = useMemo(() => {
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL;
+  return baseUrl && accessToken ? createHerApi({ baseUrl, accessToken }) : null;
+ }, [accessToken]);
+ useEffect(() => {
+  if (!accessToken || !api) return;
+  let active = true;
+  setRemoteStatus("loading");
+  Promise.all([
+   api.getDashboard<{ profile?:{display_name?:string}; goals?: Array<{ id:string; current_amount?:number; target_amount?:number }>; tasks?: Array<{title?:string;due_at?:string}>; waterGlasses?:number; cycle?:{cycleDay?:number;typicalCycleLength?:number;lastConfirmedPeriodDate?:string; predictedPeriodDate?:string; predictionConfidence?:string} }>(),
+   api.getJournal<Array<{ id:string; body:string; created_at?:string }>>(),
+   api.getExpenses<Array<{category:string;amount:number}>>(),
+   api.getTasks<Array<{title?:string;due_at?:string;category?:string}>>(),
+   api.getRoutines<Array<{id:string;title:string;time_of_day:string;routine_items?:Array<{title:string;completed:boolean}>}>>(),
+   api.getImportantDates<Array<{id:string;title:string;date_on:string;notes?:string}>>(),
+   api.getRelationshipNotes<Array<{id:string;title?:string;body:string;created_at?:string}>>(),
+   api.getWellness<{energy?:string;sleep_minutes?:number;movement_minutes?:number;reflection?:string} | null>(),
+   api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>()
+   ]).then(([dashboard, entries, expenseRows, taskRows, routineRows, dateRows, noteRows, wellness, reminderRows]) => {
+   if (!active) return;
+   const remoteGoal = dashboard.goals?.[0]?.current_amount;
+   const remoteId = dashboard.goals?.[0]?.id;
+   if (remoteId) setRemoteGoalId(remoteId);
+   if (dashboard.profile?.display_name) setDisplayName(dashboard.profile.display_name);
+   if (dashboard.tasks?.[0]?.title) setNextTask(dashboard.tasks[0].title);
+   if (typeof remoteGoal === "number") setGoalAmount(remoteGoal);
+   if (typeof dashboard.goals?.[0]?.target_amount === "number") setRemoteGoalTarget(dashboard.goals[0].target_amount);
+   if (typeof dashboard.waterGlasses === "number") setWater(Math.min(8, dashboard.waterGlasses));
+   const latest = entries?.[0]?.body;
+   if (latest) setSavedJournal(latest);
+   setExpenses(expenseRows ?? []);
+   setTasks(taskRows ?? []);
+   setRoutines(routineRows ?? []);
+   setImportantDates(dateRows ?? []);
+   setRelationshipNotes(noteRows ?? []);
+   setReminders(reminderRows ?? []);
+   void scheduleHerReminders(reminderRows ?? []);
+   if (wellness?.energy) setEnergy(wellness.energy);
+   if (typeof wellness?.sleep_minutes === "number") setSleep(`${Math.floor(wellness.sleep_minutes/60)}h ${wellness.sleep_minutes%60}m`);
+   if (typeof wellness?.movement_minutes === "number") setMovement(`${wellness.movement_minutes} min`);
+   if (wellness?.reflection) setReflection(wellness.reflection);
+   if (typeof dashboard.cycle?.cycleDay === "number") setCycleDay(dashboard.cycle.cycleDay);\n   if (typeof dashboard.cycle?.typicalCycleLength === "number") setTypicalCycleLength(dashboard.cycle.typicalCycleLength);\n   if (dashboard.cycle?.predictedPeriodDate) setPredictedPeriodDate(dashboard.cycle.predictedPeriodDate);\n   if (dashboard.cycle?.lastConfirmedPeriodDate) setPeriodStart(dashboard.cycle.lastConfirmedPeriodDate);
+   if (dashboard.cycle?.predictedPeriodDate) { const d=new Date(dashboard.cycle.predictedPeriodDate); const days=Math.max(0,Math.ceil((d.getTime()-Date.now())/86400000)); setCyclePrediction(`Period predicted in ${days} day${days===1?"":"s"}`); setCycleConfidence(dashboard.cycle.predictionConfidence ? `${dashboard.cycle.predictionConfidence[0].toUpperCase()+dashboard.cycle.predictionConfidence.slice(1)} confidence` : "Prediction"); }
+   setRemoteStatus("ready");
+  }).catch(() => { if (active) setRemoteStatus("offline"); });
+  return () => { active = false; };
+ }, [accessToken, api]);
+ const [mood,setMood]=useState<Mood>(initialData.mood ?? "Okay");
+ const [water,setWater]=useState(initialData.waterGlasses);
+ const [goalAmount,setGoalAmount]=useState(initialData.goals[0]?.currentAmount ?? 0);
+ const [remoteGoalId,setRemoteGoalId]=useState<string | null>(null);
+ const [remoteGoalTarget,setRemoteGoalTarget]=useState(20000);
+ const [displayName,setDisplayName]=useState("there");
+ const [cyclePrediction,setCyclePrediction]=useState("Period prediction unavailable");\n const [cycleDay,setCycleDay]=useState<number | null>(null);\n const [typicalCycleLength,setTypicalCycleLength]=useState<number | null>(null);\n const [predictedPeriodDate,setPredictedPeriodDate]=useState<string | null>(null);
+ const [cycleConfidence,setCycleConfidence]=useState("Prediction");
+ const [nextTask,setNextTask]=useState("No upcoming tasks");
+ const [expenses,setExpenses]=useState<Array<{category:string;amount:number}>>([]);
+ const [tasks,setTasks]=useState<Array<{title?:string;due_at?:string;category?:string}>>([]);
+ const [routines,setRoutines]=useState<Array<{id:string;title:string;time_of_day:string;routine_items?:Array<{title:string;completed:boolean}>}>>([]);
+ const [importantDates,setImportantDates]=useState<Array<{id:string;title:string;date_on:string;notes?:string}>>([]);
+ const [relationshipNotes,setRelationshipNotes]=useState<Array<{id:string;title?:string;body:string;created_at?:string}>>([]);
+ const [reminders,setReminders]=useState<Array<{id:string;title:string;due_at:string;source?:string}>>([]);
+ const [routineTitle,setRoutineTitle]=useState("");
+ const [routineTime,setRoutineTime]=useState<"morning"|"evening">("morning");
+ const [dateTitle,setDateTitle]=useState("");
+ const [dateOn,setDateOn]=useState("");
+ const [noteBody,setNoteBody]=useState("");
+ const [savingModule,setSavingModule]=useState(false);
+ const [journal,setJournal]=useState("");
+ const [savedJournal,setSavedJournal]=useState("");
+ const [aiInput,setAiInput]=useState("");
+ const [aiMessages,setAiMessages]=useState<string[]>(["Hi Amina. I’m HER. What would you like help with today?"]);
+ const [periodStart,setPeriodStart]=useState("2026-09-07");
+ const [periodFlow,setPeriodFlow]=useState("Medium");
+ const [cycleSymptoms,setCycleSymptoms]=useState<string[]>([]);
+ const [aiBusy,setAiBusy]=useState(false);
+ const [energy,setEnergy]=useState("Okay");
+ const [sleep,setSleep]=useState("7h 42m");
+ const [movement,setMovement]=useState("32 min");
+ const [reflection,setReflection]=useState("");
+ const saveWellness=async (patch:Record<string,unknown>)=>{try{await api?.saveWellness(patch)}catch{setRemoteStatus("offline")}};\n const completeReminder=async(id:string)=>{if(!api)return;try{await api.completeReminder(id);const rows=await api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>();setReminders(rows??[]);void scheduleHerReminders(rows??[])}catch{setRemoteStatus("offline")}};
+ const saveRoutine=async()=>{ if(!api||!routineTitle.trim()||savingModule)return; setSavingModule(true); try{ await api.createRoutine({title:routineTitle.trim(),timeOfDay:routineTime}); setRoutineTitle(""); const rows=await api.getRoutines<Array<{id:string;title:string;time_of_day:string;routine_items?:Array<{title:string;completed:boolean}>}>>(); setRoutines(rows??[]); const reminderRows=await api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>(); setReminders(reminderRows??[]); void scheduleHerReminders(reminderRows??[]);}catch{setRemoteStatus("offline")}finally{setSavingModule(false)} };
+ const saveImportantDate=async()=>{ if(!api||!dateTitle.trim()||!dateOn||savingModule)return; setSavingModule(true); try{ await api.createImportantDate({title:dateTitle.trim(),dateOn}); setDateTitle("");setDateOn(""); const rows=await api.getImportantDates<Array<{id:string;title:string;date_on:string;notes?:string}>>();setImportantDates(rows??[]); const reminderRows=await api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>(); setReminders(reminderRows??[]); void scheduleHerReminders(reminderRows??[]);}catch{setRemoteStatus("offline")}finally{setSavingModule(false)} };
+ const saveRelationshipNote=async()=>{ if(!api||!noteBody.trim()||savingModule)return; setSavingModule(true); try{ await api.createRelationshipNote({body:noteBody.trim()});setNoteBody("");const rows=await api.getRelationshipNotes<Array<{id:string;title?:string;body:string;created_at?:string}>>();setRelationshipNotes(rows??[]);}catch{setRemoteStatus("offline")}finally{setSavingModule(false)} };
+
+ const sendAiMessage=async ()=>{
+  const message=aiInput.trim();
+  if(!message||aiBusy)return;
+  setAiMessages(current=>[...current,"You: "+message]); setAiInput(""); setAiBusy(true);
+  try {
+   const result=await api?.askHerAI<{reply:string;action?:{type:string};status?:string}>({message});
+   const done=result?.status==="completed"&&result.action?.type ? " • Done: "+result.action.type.replace(/_/g," ") : "";
+   setAiMessages(current=>[...current,"HER: "+(result?.reply??"I’m here to help.")+done]);
+  } catch {
+   setAiMessages(current=>[...current,"HER: I’m having trouble reaching your private assistant right now."]);
+   setRemoteStatus("offline");
+  } finally { setAiBusy(false); }
+ };
+ const toggleCycleSymptom=(symptom:string)=>setCycleSymptoms((current)=>current.includes(symptom)?current.filter((item)=>item!==symptom):[...current,symptom]);
+ const greeting=useMemo(()=>{const h=new Date().getHours();return h<12?"Good morning, {displayName}":h<18?"Good afternoon, Amina":"Good evening, Amina"},[]);
+ if(!accessToken) return <><StatusBar style="dark"/><AuthScreen onAuthenticated={handleAuthenticated}/></>;
+
+ const goTab=(next:Tab)=>{setModule(null);setTab(next)};
+
+ const home=<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+  <View style={styles.header}><View><Text style={styles.brand}>HER</Text><Text style={styles.tagline}>Your private space for life.</Text>{remoteStatus==="offline"&&<Text style={styles.offlineText}>Offline — changes stay on this device for now.</Text>}</View>
+   <Pressable style={styles.profileButton} onPress={async ()=>{if(supabase){await supabase.auth.signOut();setAccessToken(null)}}}><Text style={styles.profileText}>A</Text></Pressable></View>
+  <Text style={styles.greeting}>{greeting}</Text><Text style={styles.subtitle}>Here’s a gentle look at your day.</Text>{reminders.length>0&&<View style={styles.reminderCard}><Text style={styles.cardEyebrow}>REMINDERS</Text>{reminders.slice(0,4).map(item=><Pressable key={item.id} onPress={()=>completeReminder(item.id)} style={styles.reminderRow}><View style={styles.reminderCopy}><Text style={styles.reminderTitle}>{item.title}</Text><Text style={styles.reminderTime}>{new Date(item.due_at).toLocaleString()}</Text></View><Text style={styles.reminderDone}>Done</Text></Pressable>)}</View>}
+  <View style={styles.moodCard}><Text style={styles.cardEyebrow}>HOW ARE YOU FEELING?</Text><Text style={styles.cardTitle}>Check in with yourself</Text>
+   <View style={styles.moodRow}>{(["Great","Okay","Low","Tired"] as Mood[]).map(item=><Pressable key={item} onPress={()=>{setMood(item);herStore.setMood(item)}} style={[styles.moodPill,mood===item&&styles.moodPillActive]}><Text style={[styles.moodText,mood===item&&styles.moodTextActive]}>{item}</Text></Pressable>)}</View>
+  </View>
+  <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Today</Text><Text style={styles.sectionLink}>Your overview</Text></View>
+  <View style={styles.todayGrid}>
+   <TodayCard icon="◐" tint={colors.blush} title="Cycle" body={cyclePrediction} footer={cycleConfidence}/>
+   <TodayCard icon="◎" tint={colors.sage} title="Savings" body="Save KSh 700 toward your goal" footer="KSh {goalAmount.toLocaleString()} saved"/>
+   <TodayCard icon="✓" tint={colors.lavender} title="Study" body={nextTask} footer="2 tasks today"/>
+   <TodayCard icon="◌" tint={colors.blue} title="Water" body={water+"/8 glasses"} footer={<Pressable onPress={async ()=>{herStore.addWaterGlass();setWater(herStore.get().waterGlasses);try{await api?.addWaterGlass()}catch{setRemoteStatus("offline")}}}><Text style={styles.actionLink}>+ Add glass</Text></Pressable>}/>
+  </View>
+  <View style={styles.reminderCard}><View style={styles.reminderIcon}><Text>✦</Text></View><View style={{flex:1}}><Text style={styles.cardEyebrow}>EVENING ROUTINE</Text><Text style={styles.reminderTitle}>Skincare at 8:00 PM</Text><Text style={styles.reminderBody}>A small thing for you, by you.</Text></View><Text style={styles.chevron}>›</Text></View>
+  <Pressable style={styles.aiCard} onPress={()=>goTab("HER AI")}><View style={styles.aiBadge}><Text style={styles.aiBadgeText}>AI</Text></View><View style={{flex:1}}><Text style={styles.aiTitle}>Ask HER</Text><Text style={styles.aiBody}>Plan your week, set a goal, or just talk.</Text></View><Text style={styles.aiArrow}>→</Text></Pressable>
+  <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Quick Access</Text></View>
+  <View style={styles.quickGrid}>{quickAccess.map(([label,icon,tint])=><Pressable key={label} style={styles.quickCard} onPress={()=>label==="Wellness"?goTab("Wellness"):label==="Goals"?goTab("Goals"):label==="Journal"?goTab("Journal"):setModule(label)}><View style={[styles.quickIcon,{backgroundColor:tint}]}><Text style={styles.quickIconText}>{icon}</Text></View><Text style={styles.quickLabel}>{label}</Text></Pressable>)}</View>
+ </ScrollView>;
+
+ const wellness=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Wellness" subtitle="A gentle check-in for your body and mind."/>
+  <View style={styles.featureCard}><Text style={styles.cardEyebrow}>TODAY'S CHECK-IN</Text><Text style={styles.featureTitle}>How is your energy?</Text><View style={styles.choiceRow}>{["Low","Okay","Good","Full"].map(x=><Pressable key={x} onPress={()=>{setEnergy(x);saveWellness({energy:x})}} style={[styles.choice,energy===x&&styles.moodPillActive]}><Text style={energy===x?styles.choiceTextActive:styles.choiceText}>{x}</Text></Pressable>)}</View></View>
+  <Metric title="Water" value={water+"/8 glasses"} detail="Keep sipping through the day" tint={colors.blue}/>
+  <Metric title="Sleep" value={sleep} detail="A calm night of rest" tint={colors.lavender}/>
+  <Metric title="Movement" value={movement} detail="Light movement today" tint={colors.sage}/>
+  <View style={styles.reflection}><Text style={styles.cardEyebrow}>REFLECTION</Text><Text style={styles.cardTitle}>One thing I’m grateful for…</Text><TextInput value={reflection} onChangeText={setReflection} onBlur={()=>saveWellness({reflection})} placeholder="Write a few words" placeholderTextColor={colors.muted} style={styles.input}/></View>
+ </ScrollView>;
+
+ const goals=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Goals" subtitle="Turn what matters to you into small steps."/>
+  <View style={styles.goalCard}><View style={styles.goalTop}><View style={[styles.goalIcon,{backgroundColor:colors.blush}]}><Text>◎</Text></View><View style={{flex:1}}><Text style={styles.cardEyebrow}>SAVINGS GOAL</Text><Text style={styles.featureTitle}>Save KSh {remoteGoalTarget.toLocaleString()}</Text></View><Text style={styles.percent}>{Math.round((goalAmount/remoteGoalTarget)*100)}%</Text></View>
+   <View style={styles.progressTrack}><View style={[styles.progressFill,{width:(goalAmount/remoteGoalTarget*100)+"%" }]}/></View><View style={styles.goalRow}><Text style={styles.mutedSmall}>KSh {goalAmount.toLocaleString()} saved</Text><Text style={styles.mutedSmall}>KSh 20,000</Text></View>
+   <Pressable style={styles.secondaryButton} onPress={async ()=>{herStore.addGoalAmount("goal-savings",700);setGoalAmount(herStore.get().goals[0]?.currentAmount ?? goalAmount);try{await remoteGoalId ? api?.updateGoal(remoteGoalId,{currentAmount:herStore.get().goals[0]?.currentAmount ?? goalAmount}) : Promise.resolve()}catch{setRemoteStatus("offline")}}}><Text style={styles.secondaryText}>Add KSh 700</Text></Pressable>
+  </View>
+  <View style={styles.goalCard}><Text style={styles.cardEyebrow}>MILESTONES</Text>{["Reach KSh 10,000","Reach KSh 15,000","Reach KSh 20,000"].map((x,i)=><View key={x} style={styles.milestone}><View style={[styles.check,{backgroundColor:i===0?colors.sage:colors.cream}]}><Text>{i===0?"✓":""}</Text></View><Text style={styles.milestoneText}>{x}</Text></View>)}</View>
+ </ScrollView>;
+
+ const journalScreen=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Journal" subtitle="A private place for your thoughts."/>
+  <View style={styles.journalPrompt}><Text style={styles.cardEyebrow}>TODAY'S PROMPT</Text><Text style={styles.featureTitle}>What do you need more of this week?</Text></View>
+  <TextInput multiline placeholder="Write freely. This is your space." placeholderTextColor={colors.muted} value={journal} onChangeText={setJournal} style={styles.journalInput}/>
+  <Pressable style={styles.primaryButton} onPress={async ()=>{if(journal.trim()){herStore.addJournalEntry(journal.trim());setSavedJournal(journal.trim());try{await api?.createJournalEntry({body:journal.trim()})}catch{setRemoteStatus("offline")}}}}><Text style={styles.primaryButtonText}>Save entry</Text></Pressable>
+  <Text style={styles.savedLabel}>RECENT ENTRIES</Text><View style={styles.entryCard}><Text style={styles.entryDate}>Today</Text><Text style={styles.entryText}>{savedJournal||"Write something above and save it here."}</Text></View>
+ </ScrollView>;
+
+ const ai=<ScrollView contentContainerStyle={styles.content}><PageHeader title="HER AI" subtitle="Your private assistant for everyday life."/>
+  <View style={styles.aiIntro}><View style={styles.aiBadge}><Text style={styles.aiBadgeText}>AI</Text></View><View style={{flex:1}}><Text style={styles.featureTitle}>What can I help with?</Text><Text style={styles.aiBodyDark}>Goals, routines, study plans, reminders, money and more.</Text></View></View>
+  {aiMessages.map((m,i)=>{const user=m.startsWith("You:");return <View key={i} style={[styles.message,user?styles.userMessage:styles.herMessage]}><Text style={[styles.messageText,user&&styles.userMessageText]}>{m}</Text></View>})}
+  <View style={styles.suggestionRow}>{["Plan my week","Create a savings goal","Help me reset"].map(x=><Pressable key={x} style={styles.suggestion} onPress={()=>setAiInput(x)}><Text style={styles.suggestionText}>{x}</Text></Pressable>)}</View>
+  <View style={styles.chatBox}><TextInput value={aiInput} onChangeText={setAiInput} placeholder="Ask HER anything..." placeholderTextColor={colors.muted} style={styles.chatInput}/><Pressable style={styles.sendButton} onPress={sendAiMessage}><Text style={styles.sendText}>{aiBusy?"…":"↑"}</Text></Pressable></View>
+ </ScrollView>;
+
+ const moduleContent = module==="Cycle & Period" ? <><View style={[styles.featureCard,{backgroundColor:colors.blush}]}><Text style={styles.cardEyebrow}>CYCLE OVERVIEW</Text><Text style={styles.featureTitle}>{cyclePrediction}</Text><Text style={styles.featureBody}>Prediction only — not a confirmed date. Confirm your period when it starts.</Text></View><View style={styles.moduleGrid}><ModuleStat title="Cycle day" value={cycleDay ? `Day ${cycleDay}` : "—"} tint={colors.white}/><ModuleStat title="Typical cycle" value={typicalCycleLength ? `${typicalCycleLength} days` : "—"} tint={colors.white}/></View><View style={styles.featureCard}><Text style={styles.cardEyebrow}>LOG A PERIOD</Text><Text style={styles.featureTitle}>When did your latest period start?</Text><TextInput value={periodStart} onChangeText={setPeriodStart} placeholder="YYYY-MM-DD" placeholderTextColor={colors.muted} style={styles.input}/><Text style={styles.cardEyebrow}>FLOW</Text><View style={styles.choiceRow}>{["Light","Medium","Heavy"].map(x=><Pressable key={x} onPress={()=>setPeriodFlow(x)} style={[styles.choice,periodFlow===x&&styles.moodPillActive]}><Text style={styles.choiceText}>{x}</Text></Pressable>)}</View><Pressable style={styles.primaryButton} onPress={async ()=>{herStore.logConfirmedPeriod(periodStart.trim(),periodFlow);try{await api?.logPeriod({startDate:periodStart.trim(),flow:periodFlow});for(const symptom of cycleSymptoms){await api?.logCycleSymptom({symptom,recordedOn:periodStart.trim()})}if(api){const dashboard=await api.getDashboard<any>();if(dashboard.cycle?.predictedPeriodDate){setPredictedPeriodDate(dashboard.cycle.predictedPeriodDate);setCycleDay(dashboard.cycle.cycleDay??null);setTypicalCycleLength(dashboard.cycle.typicalCycleLength??null);setCycleConfidence(dashboard.cycle.predictionConfidence??"Prediction");}const reminderRows=await api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>();setReminders(reminderRows??[]);void scheduleHerReminders(reminderRows??[]);}}catch{setRemoteStatus("offline")}}}><Text style={styles.primaryButtonText}>Save confirmed period</Text></Pressable></View><View style={styles.featureCard}><Text style={styles.cardEyebrow}>SYMPTOMS</Text><Text style={styles.featureTitle}>What are you noticing?</Text><View style={styles.choiceRow}>{["Cramps","Bloating","Headache","Back pain","Tender breasts","Fatigue"].map(x=><Pressable key={x} onPress={()=>toggleCycleSymptom(x)} style={[styles.choice,cycleSymptoms.includes(x)&&styles.moodPillActive]}><Text style={styles.choiceText}>{x}</Text></Pressable>)}</View><Text style={styles.featureBody}>{cycleSymptoms.length ? cycleSymptoms.join(" · ") : "Select any symptoms you want to remember."}</Text></View><View style={styles.featureCard}><Text style={styles.cardEyebrow}>UPCOMING</Text><View style={styles.listRow}><Text style={styles.listTitle}>Predicted period</Text><Text style={styles.listValue}>{predictedPeriodDate ? `${new Date(predictedPeriodDate).toLocaleDateString()} · ${cycleConfidence}` : "No prediction yet"}</Text></View><View style={styles.listRow}><Text style={styles.listTitle}>Confirmed history</Text><Text style={styles.listValue}>{periodStart || "No confirmed period yet"}</Text></View></View></> : module==="Money" ? <><View style={[styles.featureCard,{backgroundColor:colors.blue}]}><Text style={styles.cardEyebrow}>RECENT SPENDING</Text><Text style={styles.featureTitle}>KSh {expenses.reduce((sum,x)=>sum+Number(x.amount||0),0).toLocaleString()} recorded</Text><Text style={styles.featureBody}>Your saved expenses appear here as you add them.</Text></View><View style={styles.moduleGrid}><ModuleStat title="Spent" value={`KSh ${expenses.reduce((sum,x)=>sum+Number(x.amount||0),0).toLocaleString()}`} tint={colors.white}/><ModuleStat title="Entries" value={String(expenses.length)} tint={colors.white}/></View><View style={styles.featureCard}><Text style={styles.cardEyebrow}>SPENDING</Text>{(expenses.length?expenses.slice(0,8):[{category:"No expenses yet",amount:0}]).map((x,i)=><View key={x.category+i} style={styles.listRow}><Text style={styles.listTitle}>{x.category}</Text><Text style={styles.listValue}>{x.amount ? `KSh ${Number(x.amount).toLocaleString()}` : "—"}</Text></View>)}</View></> : module==="Study & Career" ? <><View style={[styles.featureCard,{backgroundColor:colors.lavender}]}><Text style={styles.cardEyebrow}>UPCOMING</Text><Text style={styles.featureTitle}>{tasks.length} open tasks</Text><Text style={styles.featureBody}>Your study and career tasks stay connected to HER AI and your Home dashboard.</Text></View><View style={styles.featureCard}><Text style={styles.cardEyebrow}>TASKS</Text>{(tasks.length?tasks.slice(0,8):[{title:"No tasks yet"}]).map((x,i)=><View key={(x.title||"task")+i} style={styles.taskRow}><View style={[styles.check,{backgroundColor:i===0?colors.sage:colors.cream}]}><Text>{i===0&&tasks.length?"✓":""}</Text></View><Text style={styles.listTitle}>{x.title}</Text></View>)}</View><View style={styles.featureCard}><Text style={styles.cardEyebrow}>CAREER GOAL</Text><Text style={styles.featureTitle}>Build your next opportunity</Text><Text style={styles.featureBody}>Track applications, skills and documents in one private space.</Text></View></> : module==="Self-Care" ? <><View style={[styles.featureCard,{backgroundColor:colors.lavender}]}><Text style={styles.cardEyebrow}>YOUR ROUTINES</Text><Text style={styles.featureTitle}>{routines.length ? `${routines.length} routines` : "No routines yet"}</Text><Text style={styles.featureBody}>Build small routines that fit your real day.</Text><TextInput value={routineTitle} onChangeText={setRoutineTitle} placeholder="Routine name" placeholderTextColor={colors.muted} style={styles.input}/><View style={styles.choiceRow}><Pressable onPress={()=>setRoutineTime("morning")} style={[styles.choice,{backgroundColor:routineTime==="morning"?colors.sage:colors.white}]}><Text style={styles.choiceText}>Morning</Text></Pressable><Pressable onPress={()=>setRoutineTime("evening")} style={[styles.choice,{backgroundColor:routineTime==="evening"?colors.blush:colors.white}]}><Text style={styles.choiceText}>Evening</Text></Pressable><Pressable onPress={saveRoutine} style={[styles.choice,{backgroundColor:colors.ink}]}><Text style={[styles.choiceText,{color:colors.white}]}>{savingModule?"Saving…":"Add"}</Text></Pressable></View></View>{routines.map(r=><RoutineCard key={r.id} title={r.title} items={(r.routine_items||[]).map(i=>i.title)} tint={r.time_of_day==="evening"?colors.blush:colors.sage}/>)}</> : <><View style={[styles.featureCard,{backgroundColor:colors.peach}]}><Text style={styles.cardEyebrow}>YOUR PEOPLE</Text><Text style={styles.featureTitle}>{importantDates.length ? `${importantDates.length} important dates` : "Your private people space"}</Text><Text style={styles.featureBody}>Only information you choose to save appears here.</Text><TextInput value={dateTitle} onChangeText={setDateTitle} placeholder="Important date" placeholderTextColor={colors.muted} style={styles.input}/><TextInput value={dateOn} onChangeText={setDateOn} placeholder="YYYY-MM-DD" placeholderTextColor={colors.muted} style={styles.input}/><Pressable onPress={saveImportantDate} style={[styles.primaryButton,{backgroundColor:colors.ink}]}><Text style={styles.primaryButtonText}>{savingModule?"Saving…":"Save date"}</Text></Pressable></View><View style={styles.featureCard}><Text style={styles.cardEyebrow}>UPCOMING</Text>{importantDates.length?importantDates.slice(0,6).map(d=><View key={d.id} style={styles.listRow}><Text style={styles.listTitle}>{d.title}</Text><Text style={styles.listValue}>{d.date_on}</Text></View>):<Text style={styles.featureBody}>No important dates yet.</Text>}</View><View style={styles.featureCard}><Text style={styles.cardEyebrow}>PRIVATE NOTES</Text><TextInput value={noteBody} onChangeText={setNoteBody} placeholder="Write something private…" placeholderTextColor={colors.muted} style={[styles.input,{minHeight:90}]} multiline/><Pressable onPress={saveRelationshipNote} style={[styles.primaryButton,{backgroundColor:colors.ink}]}><Text style={styles.primaryButtonText}>{savingModule?"Saving…":"Save private note"}</Text></Pressable>{relationshipNotes.slice(0,3).map(n=><Text key={n.id} style={[styles.featureBody,{marginTop:12}]}>{n.body}</Text>)}</View></>;
+ const moduleScreen=module?<ScrollView contentContainerStyle={styles.content}><PageHeader title={module} subtitle="A private space that connects back to your everyday life."/>\n  {moduleContent}\n  <Pressable style={styles.secondaryButton} onPress={()=>setModule(null)}><Text style={styles.secondaryText}>Back to Home</Text></Pressable>\n </ScrollView>:null;
+
+ const body=tab==="Home"?home:tab==="Wellness"?wellness:tab==="Goals"?goals:tab==="Journal"?journalScreen:ai;
+
+ return <SafeAreaView style={styles.safe}><StatusBar style="dark"/>{module?moduleScreen:body}
+  <View style={styles.bottomNav}>{(["Home","Wellness","Goals","Journal","HER AI"] as Tab[]).map(item=><Pressable key={item} style={styles.navItem} onPress={()=>goTab(item)}><Text style={[styles.navIcon,tab===item&&!module&&styles.navIconActive]}>{item==="Home"?"⌂":item==="Wellness"?"♡":item==="Goals"?"◎":item==="Journal"?"▤":"✦"}</Text><Text style={[styles.navLabel,tab===item&&!module&&styles.navLabelActive]}>{item}</Text></Pressable>)}</View>
+ </SafeAreaView>;
+}
+
+function PageHeader({title,subtitle}:{title:string;subtitle:string}){return <View style={styles.pageHeader}><Text style={styles.brand}>HER</Text><Text style={styles.pageTitle}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text></View>}
+function TodayCard({icon,tint,title,body,footer}:{icon:string;tint:string;title:string;body:string;footer:React.ReactNode}){return <View style={styles.todayCard}><View style={[styles.todayIcon,{backgroundColor:tint}]}><Text style={styles.todayIconText}>{icon}</Text></View><Text style={styles.todayTitle}>{title}</Text><Text style={styles.todayBody}>{body}</Text>{typeof footer==="string"?<Text style={styles.todayFooter}>{footer}</Text>:footer}</View>}
+function Metric({title,value,detail,tint}:{title:string;value:string;detail:string;tint:string}){return <View style={styles.metric}><View style={[styles.metricIcon,{backgroundColor:tint}]}><Text>♡</Text></View><View style={{flex:1}}><Text style={styles.metricTitle}>{title}</Text><Text style={styles.metricDetail}>{detail}</Text></View><Text style={styles.metricValue}>{value}</Text></View>}\nfunction ModuleStat({title,value,tint}:{title:string;value:string;tint:string}){return <View style={[styles.moduleStat,{backgroundColor:tint}]}><Text style={styles.cardEyebrow}>{title.toUpperCase()}</Text><Text style={styles.statValue}>{value}</Text></View>}\nfunction RoutineCard({title,items,tint}:{title:string;items:string[];tint:string}){return <View style={[styles.featureCard,{backgroundColor:tint}]}><Text style={styles.cardEyebrow}>{title.toUpperCase()} ROUTINE</Text>{items.map(x=><View key={x} style={styles.taskRow}><View style={styles.check}><Text>✓</Text></View><Text style={styles.listTitle}>{x}</Text></View>)}</View>}
+
+const styles=StyleSheet.create({
+ safe:{flex:1,backgroundColor:colors.cream},content:{padding:22,paddingBottom:130},header:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:28},brand:{fontFamily:"serif",fontSize:32,letterSpacing:2,color:colors.ink},tagline:{fontSize:12,color:colors.muted,marginTop:2},
+ profileButton:{width:42,height:42,borderRadius:21,backgroundColor:colors.white,alignItems:"center",justifyContent:"center",borderWidth:1,borderColor:colors.line},profileText:{fontSize:15,fontWeight:"600",color:colors.ink},greeting:{fontSize:27,fontWeight:"700",color:colors.ink},subtitle:{color:colors.muted,fontSize:14,marginTop:6,marginBottom:20},
+ moodCard:{backgroundColor:colors.white,borderRadius:22,padding:18,borderWidth:1,borderColor:colors.line},cardEyebrow:{fontSize:10,letterSpacing:1.4,color:colors.muted,fontWeight:"700"},cardTitle:{fontSize:17,fontWeight:"700",color:colors.ink,marginTop:5},moodRow:{flexDirection:"row",gap:7,marginTop:14},moodPill:{flex:1,paddingVertical:10,borderRadius:14,backgroundColor:colors.cream,alignItems:"center"},moodPillActive:{backgroundColor:colors.ink},moodText:{fontSize:11,color:colors.muted,fontWeight:"600"},moodTextActive:{color:colors.white},
+ sectionHeader:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginTop:28,marginBottom:12},sectionTitle:{fontSize:18,fontWeight:"700",color:colors.ink},sectionLink:{fontSize:12,color:colors.muted},todayGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},todayCard:{width:"48.2%",backgroundColor:colors.white,borderRadius:20,padding:16,minHeight:154,borderWidth:1,borderColor:colors.line},todayIcon:{width:36,height:36,borderRadius:12,alignItems:"center",justifyContent:"center",marginBottom:13},todayIconText:{color:colors.ink,fontSize:16},todayTitle:{fontSize:13,fontWeight:"700",color:colors.ink},todayBody:{fontSize:12,lineHeight:18,color:colors.muted,marginTop:6},todayFooter:{fontSize:10,color:colors.muted,marginTop:10},actionLink:{fontSize:10,color:colors.ink,fontWeight:"700",marginTop:10},
+ reminderCard:{marginTop:12,padding:16,borderRadius:20,backgroundColor:colors.peach,flexDirection:"row",alignItems:"center",gap:13},reminderIcon:{width:38,height:38,borderRadius:13,backgroundColor:colors.white,alignItems:"center",justifyContent:"center"},reminderTitle:{fontSize:14,fontWeight:"700",color:colors.ink,marginTop:4},reminderBody:{fontSize:11,color:colors.muted,marginTop:3},chevron:{fontSize:24,color:colors.muted},
+ aiCard:{marginTop:22,backgroundColor:colors.ink,borderRadius:22,padding:18,flexDirection:"row",alignItems:"center",gap:13},aiBadge:{width:42,height:42,borderRadius:15,backgroundColor:colors.blush,alignItems:"center",justifyContent:"center"},aiBadgeText:{fontSize:11,fontWeight:"800",color:colors.ink},aiTitle:{color:colors.white,fontSize:16,fontWeight:"700"},aiBody:{color:"#C8C2C2",fontSize:11,marginTop:4},aiBodyDark:{color:colors.muted,fontSize:12,lineHeight:18,marginTop:4},aiArrow:{color:colors.white,fontSize:20},
+ quickGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},quickCard:{width:"23.3%",minHeight:88,backgroundColor:colors.white,borderRadius:18,padding:9,alignItems:"center",borderWidth:1,borderColor:colors.line},quickIcon:{width:36,height:36,borderRadius:12,alignItems:"center",justifyContent:"center"},quickIconText:{color:colors.ink,fontSize:12,fontWeight:"700"},quickLabel:{fontSize:9,color:colors.ink,fontWeight:"600",textAlign:"center",marginTop:8,lineHeight:12},
+ pageHeader:{marginBottom:22},pageTitle:{fontSize:30,fontWeight:"700",color:colors.ink,marginTop:18},featureCard:{backgroundColor:colors.white,borderRadius:22,padding:20,borderWidth:1,borderColor:colors.line,marginBottom:14},featureTitle:{fontSize:19,fontWeight:"700",color:colors.ink,marginTop:7},featureBody:{fontSize:13,lineHeight:21,color:colors.muted,marginTop:10},choiceRow:{flexDirection:"row",gap:8,marginTop:16},choice:{flex:1,padding:12,borderRadius:14,backgroundColor:colors.cream,alignItems:"center"},choiceText:{fontSize:11,color:colors.ink,fontWeight:"600"},choiceTextActive:{fontSize:11,color:colors.white,fontWeight:"600"},metric:{backgroundColor:colors.white,borderRadius:20,padding:16,flexDirection:"row",alignItems:"center",gap:12,marginBottom:10,borderWidth:1,borderColor:colors.line},metricIcon:{width:40,height:40,borderRadius:14,alignItems:"center",justifyContent:"center"},metricTitle:{fontWeight:"700",color:colors.ink},metricDetail:{fontSize:11,color:colors.muted,marginTop:3},metricValue:{fontSize:13,fontWeight:"700",color:colors.ink},reflection:{backgroundColor:colors.sage,borderRadius:20,padding:18,marginTop:8},input:{marginTop:12,backgroundColor:colors.white,borderRadius:14,padding:12,color:colors.ink,minHeight:48},
+ goalCard:{backgroundColor:colors.white,borderRadius:22,padding:20,borderWidth:1,borderColor:colors.line,marginBottom:14},goalTop:{flexDirection:"row",alignItems:"center",gap:12},goalIcon:{width:44,height:44,borderRadius:15,alignItems:"center",justifyContent:"center"},percent:{fontWeight:"700",color:colors.ink},progressTrack:{height:9,borderRadius:9,backgroundColor:colors.cream,marginTop:18,overflow:"hidden"},progressFill:{height:9,borderRadius:9,backgroundColor:colors.ink},goalRow:{flexDirection:"row",justifyContent:"space-between",marginTop:8},mutedSmall:{fontSize:10,color:colors.muted},secondaryButton:{alignSelf:"flex-start",backgroundColor:colors.cream,paddingHorizontal:14,paddingVertical:10,borderRadius:13,marginTop:15},secondaryText:{fontSize:11,fontWeight:"700",color:colors.ink},milestone:{flexDirection:"row",alignItems:"center",gap:12,marginTop:14},check:{width:25,height:25,borderRadius:9,alignItems:"center",justifyContent:"center"},milestoneText:{fontSize:13,color:colors.ink},
+ journalPrompt:{backgroundColor:colors.lavender,borderRadius:22,padding:20,marginBottom:12},journalInput:{minHeight:190,borderRadius:20,backgroundColor:colors.white,borderWidth:1,borderColor:colors.line,padding:18,textAlignVertical:"top",color:colors.ink,fontSize:14},primaryButton:{backgroundColor:colors.ink,paddingHorizontal:22,paddingVertical:14,borderRadius:16,alignItems:"center",marginTop:12},primaryButtonText:{color:colors.white,fontWeight:"700"},savedLabel:{fontSize:10,letterSpacing:1.4,color:colors.muted,fontWeight:"700",marginTop:28,marginBottom:10},entryCard:{backgroundColor:colors.white,borderRadius:18,padding:16,borderWidth:1,borderColor:colors.line},entryDate:{fontSize:10,color:colors.muted},entryText:{fontSize:13,lineHeight:20,color:colors.ink,marginTop:7},
+ aiIntro:{backgroundColor:colors.white,borderRadius:22,padding:18,flexDirection:"row",gap:13,borderWidth:1,borderColor:colors.line,marginBottom:14},herMessage:{alignSelf:"flex-start",backgroundColor:colors.white,borderRadius:18,padding:14,maxWidth:"86%",marginBottom:8,borderWidth:1,borderColor:colors.line},userMessage:{alignSelf:"flex-end",backgroundColor:colors.ink,borderRadius:18,padding:14,maxWidth:"86%",marginBottom:8},messageText:{fontSize:13,lineHeight:19,color:colors.ink},userMessageText:{color:colors.white},suggestionRow:{flexDirection:"row",gap:7,flexWrap:"wrap",marginTop:8},suggestion:{backgroundColor:colors.blush,borderRadius:14,paddingHorizontal:12,paddingVertical:9},suggestionText:{fontSize:10,fontWeight:"700",color:colors.ink},chatBox:{backgroundColor:colors.white,borderRadius:18,borderWidth:1,borderColor:colors.line,flexDirection:"row",alignItems:"center",paddingLeft:14,marginTop:14},chatInput:{flex:1,color:colors.ink,paddingVertical:13},sendButton:{width:40,height:40,borderRadius:14,backgroundColor:colors.ink,alignItems:"center",justifyContent:"center",marginRight:6},sendText:{color:colors.white,fontSize:18},moduleIcon:{width:50,height:50,borderRadius:17,alignItems:"center",justifyContent:"center"},moduleGrid:{flexDirection:"row",gap:10,marginBottom:14},moduleStat:{flex:1,borderRadius:20,padding:18,borderWidth:1,borderColor:colors.line},statValue:{fontSize:18,fontWeight:"700",color:colors.ink,marginTop:7},listRow:{flexDirection:"row",justifyContent:"space-between",paddingVertical:12,borderBottomWidth:1,borderBottomColor:colors.line},listTitle:{fontSize:13,color:colors.ink,fontWeight:"600"},listValue:{fontSize:12,color:colors.muted},taskRow:{flexDirection:"row",alignItems:"center",gap:11,paddingVertical:9},
+ bottomNav:{position:"absolute",bottom:0,left:0,right:0,height:82,backgroundColor:colors.white,borderTopWidth:1,borderTopColor:colors.line,flexDirection:"row",justifyContent:"space-around",alignItems:"center",paddingBottom:7},navItem:{alignItems:"center",justifyContent:"center",width:"20%"},navIcon:{fontSize:19,color:"#A8A0A0"},navIconActive:{color:colors.ink},navLabel:{fontSize:9,color:"#A8A0A0",marginTop:4},navLabelActive:{color:colors.ink,fontWeight:"700"}
+});
