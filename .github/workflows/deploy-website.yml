@@ -17,29 +17,21 @@ concurrency:
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Configure Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
-      - name: Prepare website
-        run: |
-          mkdir -p _site
-          cp website/index.html _site/index.html
-          cp website/styles.css _site/styles.css
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: _site
+          path: website
 
       - name: Deploy to GitHub Pages
         id: deployment
