@@ -2,9 +2,11 @@ import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { URL } from "node:url";
 import { requireSession, TokenVerifier } from "./auth";
 import { buildDashboard, DashboardRepository } from "./dashboard";
+import { createSupabaseConfig, verifySupabaseAccessToken } from "./supabase";
+import { createSupabaseRepository, HerRepository } from "./repository";
 
 export type ServerContext = { userId: string; accessToken: string };
-export type HerServerOptions = { verifyToken?: TokenVerifier; repository?: DashboardRepository };
+export type HerServerOptions = { verifyToken?: TokenVerifier; repositoryFactory?: (accessToken: string) => HerRepository };
 
 export function getBearerToken(request: IncomingMessage): string | null {
   const value = request.headers.authorization;
@@ -40,12 +42,13 @@ export function createHerServer(options: HerServerOptions = {}) {
 
     try {
       const session = await requireSession(token, options.verifyToken);
+      const repository = options.repositoryFactory?.(session.accessToken);
       if (request.method === "GET" && url.pathname === "/api/dashboard") {
-        if (!options.repository) {
+        if (!repository) {
           json(response, 501, { error: "Repository not configured" });
           return;
         }
-        const dashboard = await buildDashboard(session.userId, options.repository);
+        const dashboard = await buildDashboard(session.userId, repository);
         json(response, 200, dashboard);
         return;
       }
@@ -57,6 +60,10 @@ export function createHerServer(options: HerServerOptions = {}) {
 }
 
 if (process.env.NODE_ENV !== "test") {
+  const config = createSupabaseConfig(process.env);
   const port = Number(process.env.PORT ?? 3000);
-  createHerServer().listen(port, () => console.log(`HER API listening on ${port}`));
+  createHerServer({
+    verifyToken: (accessToken) => verifySupabaseAccessToken(config, accessToken),
+    repositoryFactory: (accessToken) => createSupabaseRepository(accessToken, config.url, config.anonKey),
+  }).listen(port, () => console.log(`HER API listening on ${port}`));
 }
