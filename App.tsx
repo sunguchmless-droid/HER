@@ -83,6 +83,7 @@ export default function App(){
  const [routines,setRoutines]=useState<Array<{id:string;title:string;time_of_day:string;routine_items?:Array<{title:string;completed:boolean}>}>>([]);
  const [importantDates,setImportantDates]=useState<Array<{id:string;title:string;date_on:string;notes?:string}>>([]);
  const [relationshipNotes,setRelationshipNotes]=useState<Array<{id:string;title?:string;body:string;created_at?:string}>>([]);
+ const [reminders,setReminders]=useState<Array<{id:string;title:string;due_at:string;source?:string}>>([]);
  const [routineTitle,setRoutineTitle]=useState("");
  const [routineTime,setRoutineTime]=useState<"morning"|"evening">("morning");
  const [dateTitle,setDateTitle]=useState("");
