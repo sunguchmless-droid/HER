@@ -179,7 +179,7 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
         due.setDate(due.getDate() - 2);
         if (due > now) candidates.push({title:"Get ready for your upcoming period",dueAt:due.toISOString(),source:"cycle"});
       }
-      for (const task of (tasks as any[]).slice(0, 20)) {
+      for (const task of (tasks as any[]).filter(task => task.category === "study").slice(0, 20)) {
         if (!task.due_at) continue;
         const due = new Date(task.due_at);
         const reminder = new Date(due.getTime() - 24 * 60 * 60 * 1000);
@@ -201,7 +201,7 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
         const year = now.getUTCFullYear();
         let due = new Date(`${year}-${item.date_on.slice(5)}T09:00:00.000Z`);
         if (due <= now) due = new Date(`${year+1}-${item.date_on.slice(5)}T09:00:00.000Z`);
-        candidates.push({title:`Today: ${item.title}`,dueAt:due.toISOString(),source:"relationship"});
+        candidates.push({title:`Upcoming: ${item.title}`,dueAt:due.toISOString(),source:"relationship"});
       }
       for (const candidate of candidates) {
         const duplicate = existing.some(item => item.source === candidate.source && item.title === candidate.title && Math.abs(Date.parse(item.due_at)-Date.parse(candidate.dueAt)) < 60*60*1000);
