@@ -35,8 +35,9 @@ export default function App(){
   setRemoteStatus("loading");
   Promise.all([
    api.getDashboard<{ goals?: Array<{ id:string; current_amount?:number; target_amount?:number }>; waterGlasses?:number; cycle?:{lastConfirmedPeriodDate?:string; predictedPeriodDate?:string; predictionConfidence?:string} }>(),
-   api.getJournal<Array<{ id:string; body:string; created_at?:string }>>()
-  ]).then(([dashboard, entries]) => {
+   api.getJournal<Array<{ id:string; body:string; created_at?:string }>>(),
+   api.getWellness<{energy?:string;sleep_minutes?:number;movement_minutes?:number;reflection?:string} | null>()
+  ]).then(([dashboard, entries, wellness]) => {
    if (!active) return;
    const remoteGoal = dashboard.goals?.[0]?.current_amount;
    const remoteId = dashboard.goals?.[0]?.id;
@@ -46,6 +47,10 @@ export default function App(){
    if (typeof dashboard.waterGlasses === "number") setWater(Math.min(8, dashboard.waterGlasses));
    const latest = entries?.[0]?.body;
    if (latest) setSavedJournal(latest);
+   if (wellness?.energy) setEnergy(wellness.energy);
+   if (typeof wellness?.sleep_minutes === "number") setSleep(`${Math.floor(wellness.sleep_minutes/60)}h ${wellness.sleep_minutes%60}m`);
+   if (typeof wellness?.movement_minutes === "number") setMovement(`${wellness.movement_minutes} min`);
+   if (wellness?.reflection) setReflection(wellness.reflection);
    if (dashboard.cycle?.lastConfirmedPeriodDate) setPeriodStart(dashboard.cycle.lastConfirmedPeriodDate);
    setRemoteStatus("ready");
   }).catch(() => { if (active) setRemoteStatus("offline"); });
@@ -64,6 +69,11 @@ export default function App(){
  const [periodFlow,setPeriodFlow]=useState("Medium");
  const [cycleSymptoms,setCycleSymptoms]=useState<string[]>([]);
  const [aiBusy,setAiBusy]=useState(false);
+ const [energy,setEnergy]=useState("Okay");
+ const [sleep,setSleep]=useState("7h 42m");
+ const [movement,setMovement]=useState("32 min");
+ const [reflection,setReflection]=useState("");
+ const saveWellness=async (patch:Record<string,unknown>)=>{try{await api?.saveWellness(patch)}catch{setRemoteStatus("offline")}};
  const sendAiMessage=async ()=>{
   const message=aiInput.trim();
   if(!message||aiBusy)return;
@@ -104,11 +114,11 @@ export default function App(){
  </ScrollView>;
 
  const wellness=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Wellness" subtitle="A gentle check-in for your body and mind."/>
-  <View style={styles.featureCard}><Text style={styles.cardEyebrow}>TODAY'S CHECK-IN</Text><Text style={styles.featureTitle}>How is your energy?</Text><View style={styles.choiceRow}>{["Low","Okay","Good","Full"].map(x=><Pressable key={x} style={styles.choice}><Text>{x}</Text></Pressable>)}</View></View>
+  <View style={styles.featureCard}><Text style={styles.cardEyebrow}>TODAY'S CHECK-IN</Text><Text style={styles.featureTitle}>How is your energy?</Text><View style={styles.choiceRow}>{["Low","Okay","Good","Full"].map(x=><Pressable key={x} onPress={()=>{setEnergy(x);saveWellness({energy:x})}} style={[styles.choice,energy===x&&styles.moodPillActive]}><Text style={energy===x?styles.choiceTextActive:styles.choiceText}>{x}</Text></Pressable>)}</View></View>
   <Metric title="Water" value={water+"/8 glasses"} detail="Keep sipping through the day" tint={colors.blue}/>
-  <Metric title="Sleep" value="7h 42m" detail="A calm night of rest" tint={colors.lavender}/>
-  <Metric title="Movement" value="32 min" detail="Light movement today" tint={colors.sage}/>
-  <View style={styles.reflection}><Text style={styles.cardEyebrow}>REFLECTION</Text><Text style={styles.cardTitle}>One thing I’m grateful for…</Text><TextInput placeholder="Write a few words" placeholderTextColor={colors.muted} style={styles.input}/></View>
+  <Metric title="Sleep" value={sleep} detail="A calm night of rest" tint={colors.lavender}/>
+  <Metric title="Movement" value={movement} detail="Light movement today" tint={colors.sage}/>
+  <View style={styles.reflection}><Text style={styles.cardEyebrow}>REFLECTION</Text><Text style={styles.cardTitle}>One thing I’m grateful for…</Text><TextInput value={reflection} onChangeText={setReflection} onBlur={()=>saveWellness({reflection})} placeholder="Write a few words" placeholderTextColor={colors.muted} style={styles.input}/></View>
  </ScrollView>;
 
  const goals=<ScrollView contentContainerStyle={styles.content}><PageHeader title="Goals" subtitle="Turn what matters to you into small steps."/>
@@ -155,7 +165,7 @@ const styles=StyleSheet.create({
  reminderCard:{marginTop:12,padding:16,borderRadius:20,backgroundColor:colors.peach,flexDirection:"row",alignItems:"center",gap:13},reminderIcon:{width:38,height:38,borderRadius:13,backgroundColor:colors.white,alignItems:"center",justifyContent:"center"},reminderTitle:{fontSize:14,fontWeight:"700",color:colors.ink,marginTop:4},reminderBody:{fontSize:11,color:colors.muted,marginTop:3},chevron:{fontSize:24,color:colors.muted},
  aiCard:{marginTop:22,backgroundColor:colors.ink,borderRadius:22,padding:18,flexDirection:"row",alignItems:"center",gap:13},aiBadge:{width:42,height:42,borderRadius:15,backgroundColor:colors.blush,alignItems:"center",justifyContent:"center"},aiBadgeText:{fontSize:11,fontWeight:"800",color:colors.ink},aiTitle:{color:colors.white,fontSize:16,fontWeight:"700"},aiBody:{color:"#C8C2C2",fontSize:11,marginTop:4},aiBodyDark:{color:colors.muted,fontSize:12,lineHeight:18,marginTop:4},aiArrow:{color:colors.white,fontSize:20},
  quickGrid:{flexDirection:"row",flexWrap:"wrap",gap:10},quickCard:{width:"23.3%",minHeight:88,backgroundColor:colors.white,borderRadius:18,padding:9,alignItems:"center",borderWidth:1,borderColor:colors.line},quickIcon:{width:36,height:36,borderRadius:12,alignItems:"center",justifyContent:"center"},quickIconText:{color:colors.ink,fontSize:12,fontWeight:"700"},quickLabel:{fontSize:9,color:colors.ink,fontWeight:"600",textAlign:"center",marginTop:8,lineHeight:12},
- pageHeader:{marginBottom:22},pageTitle:{fontSize:30,fontWeight:"700",color:colors.ink,marginTop:18},featureCard:{backgroundColor:colors.white,borderRadius:22,padding:20,borderWidth:1,borderColor:colors.line,marginBottom:14},featureTitle:{fontSize:19,fontWeight:"700",color:colors.ink,marginTop:7},featureBody:{fontSize:13,lineHeight:21,color:colors.muted,marginTop:10},choiceRow:{flexDirection:"row",gap:8,marginTop:16},choice:{flex:1,padding:12,borderRadius:14,backgroundColor:colors.cream,alignItems:"center"},choiceText:{fontSize:11,color:colors.ink,fontWeight:"600"},metric:{backgroundColor:colors.white,borderRadius:20,padding:16,flexDirection:"row",alignItems:"center",gap:12,marginBottom:10,borderWidth:1,borderColor:colors.line},metricIcon:{width:40,height:40,borderRadius:14,alignItems:"center",justifyContent:"center"},metricTitle:{fontWeight:"700",color:colors.ink},metricDetail:{fontSize:11,color:colors.muted,marginTop:3},metricValue:{fontSize:13,fontWeight:"700",color:colors.ink},reflection:{backgroundColor:colors.sage,borderRadius:20,padding:18,marginTop:8},input:{marginTop:12,backgroundColor:colors.white,borderRadius:14,padding:12,color:colors.ink,minHeight:48},
+ pageHeader:{marginBottom:22},pageTitle:{fontSize:30,fontWeight:"700",color:colors.ink,marginTop:18},featureCard:{backgroundColor:colors.white,borderRadius:22,padding:20,borderWidth:1,borderColor:colors.line,marginBottom:14},featureTitle:{fontSize:19,fontWeight:"700",color:colors.ink,marginTop:7},featureBody:{fontSize:13,lineHeight:21,color:colors.muted,marginTop:10},choiceRow:{flexDirection:"row",gap:8,marginTop:16},choice:{flex:1,padding:12,borderRadius:14,backgroundColor:colors.cream,alignItems:"center"},choiceText:{fontSize:11,color:colors.ink,fontWeight:"600"},choiceTextActive:{fontSize:11,color:colors.white,fontWeight:"600"},metric:{backgroundColor:colors.white,borderRadius:20,padding:16,flexDirection:"row",alignItems:"center",gap:12,marginBottom:10,borderWidth:1,borderColor:colors.line},metricIcon:{width:40,height:40,borderRadius:14,alignItems:"center",justifyContent:"center"},metricTitle:{fontWeight:"700",color:colors.ink},metricDetail:{fontSize:11,color:colors.muted,marginTop:3},metricValue:{fontSize:13,fontWeight:"700",color:colors.ink},reflection:{backgroundColor:colors.sage,borderRadius:20,padding:18,marginTop:8},input:{marginTop:12,backgroundColor:colors.white,borderRadius:14,padding:12,color:colors.ink,minHeight:48},
  goalCard:{backgroundColor:colors.white,borderRadius:22,padding:20,borderWidth:1,borderColor:colors.line,marginBottom:14},goalTop:{flexDirection:"row",alignItems:"center",gap:12},goalIcon:{width:44,height:44,borderRadius:15,alignItems:"center",justifyContent:"center"},percent:{fontWeight:"700",color:colors.ink},progressTrack:{height:9,borderRadius:9,backgroundColor:colors.cream,marginTop:18,overflow:"hidden"},progressFill:{height:9,borderRadius:9,backgroundColor:colors.ink},goalRow:{flexDirection:"row",justifyContent:"space-between",marginTop:8},mutedSmall:{fontSize:10,color:colors.muted},secondaryButton:{alignSelf:"flex-start",backgroundColor:colors.cream,paddingHorizontal:14,paddingVertical:10,borderRadius:13,marginTop:15},secondaryText:{fontSize:11,fontWeight:"700",color:colors.ink},milestone:{flexDirection:"row",alignItems:"center",gap:12,marginTop:14},check:{width:25,height:25,borderRadius:9,alignItems:"center",justifyContent:"center"},milestoneText:{fontSize:13,color:colors.ink},
  journalPrompt:{backgroundColor:colors.lavender,borderRadius:22,padding:20,marginBottom:12},journalInput:{minHeight:190,borderRadius:20,backgroundColor:colors.white,borderWidth:1,borderColor:colors.line,padding:18,textAlignVertical:"top",color:colors.ink,fontSize:14},primaryButton:{backgroundColor:colors.ink,paddingHorizontal:22,paddingVertical:14,borderRadius:16,alignItems:"center",marginTop:12},primaryButtonText:{color:colors.white,fontWeight:"700"},savedLabel:{fontSize:10,letterSpacing:1.4,color:colors.muted,fontWeight:"700",marginTop:28,marginBottom:10},entryCard:{backgroundColor:colors.white,borderRadius:18,padding:16,borderWidth:1,borderColor:colors.line},entryDate:{fontSize:10,color:colors.muted},entryText:{fontSize:13,lineHeight:20,color:colors.ink,marginTop:7},
  aiIntro:{backgroundColor:colors.white,borderRadius:22,padding:18,flexDirection:"row",gap:13,borderWidth:1,borderColor:colors.line,marginBottom:14},herMessage:{alignSelf:"flex-start",backgroundColor:colors.white,borderRadius:18,padding:14,maxWidth:"86%",marginBottom:8,borderWidth:1,borderColor:colors.line},userMessage:{alignSelf:"flex-end",backgroundColor:colors.ink,borderRadius:18,padding:14,maxWidth:"86%",marginBottom:8},messageText:{fontSize:13,lineHeight:19,color:colors.ink},userMessageText:{color:colors.white},suggestionRow:{flexDirection:"row",gap:7,flexWrap:"wrap",marginTop:8},suggestion:{backgroundColor:colors.blush,borderRadius:14,paddingHorizontal:12,paddingVertical:9},suggestionText:{fontSize:10,fontWeight:"700",color:colors.ink},chatBox:{backgroundColor:colors.white,borderRadius:18,borderWidth:1,borderColor:colors.line,flexDirection:"row",alignItems:"center",paddingLeft:14,marginTop:14},chatInput:{flex:1,color:colors.ink,paddingVertical:13},sendButton:{width:40,height:40,borderRadius:14,backgroundColor:colors.ink,alignItems:"center",justifyContent:"center",marginRight:6},sendText:{color:colors.white,fontSize:18},moduleIcon:{width:50,height:50,borderRadius:17,alignItems:"center",justifyContent:"center"},moduleGrid:{flexDirection:"row",gap:10,marginBottom:14},moduleStat:{flex:1,borderRadius:20,padding:18,borderWidth:1,borderColor:colors.line},statValue:{fontSize:18,fontWeight:"700",color:colors.ink,marginTop:7},listRow:{flexDirection:"row",justifyContent:"space-between",paddingVertical:12,borderBottomWidth:1,borderBottomColor:colors.line},listTitle:{fontSize:13,color:colors.ink,fontWeight:"600"},listValue:{fontSize:12,color:colors.muted},taskRow:{flexDirection:"row",alignItems:"center",gap:11,paddingVertical:9},
