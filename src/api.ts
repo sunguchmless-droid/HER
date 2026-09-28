@@ -15,6 +15,7 @@ export function createHerApi(options: ApiClientOptions) {
     getDashboard: <T>() => request<T>("/api/dashboard"),
     getGoals: <T>() => request<T>("/api/goals"),
     createGoal: <T>(body: unknown) => request<T>("/api/goals", { method: "POST", body: JSON.stringify(body) }),
+    updateGoal: <T>(id: string, body: unknown) => request<T>(`/api/goals/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
     getTasks: <T>() => request<T>("/api/tasks"),
     createTask: <T>(body: unknown) => request<T>("/api/tasks", { method: "POST", body: JSON.stringify(body) }),
     addExpense: <T>(body: unknown) => request<T>("/api/expenses", { method: "POST", body: JSON.stringify(body) }),
@@ -22,6 +23,8 @@ export function createHerApi(options: ApiClientOptions) {
     addWaterGlass: <T>() => request<T>("/api/water", { method: "POST" }),
     getJournal: <T>() => request<T>("/api/journal"),
     createJournalEntry: <T>(body: unknown) => request<T>("/api/journal", { method: "POST", body: JSON.stringify(body) }),
+    logPeriod: <T>(body: unknown) => request<T>("/api/cycle", { method: "POST", body: JSON.stringify(body) }),
+    logCycleSymptom: <T>(body: unknown) => request<T>("/api/cycle/symptoms", { method: "POST", body: JSON.stringify(body) }),
     askHerAI: <T>(body: unknown) => request<T>("/api/her-ai", { method: "POST", body: JSON.stringify(body) }),
   };
 }
