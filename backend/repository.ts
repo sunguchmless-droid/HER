@@ -159,7 +159,11 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
       const previous = cycles[1];
       const cycleLength = latest && previous ? Math.max(1, Math.round((new Date(latest.start_date).getTime() - new Date(previous.start_date).getTime()) / 86400000)) : 28;
       const cycleDay = latest ? Math.max(1, Math.floor((Date.now() - new Date(latest.start_date).getTime()) / 86400000) + 1) : 1;
-      const storedDate = storedPrediction?.predicted_start_date ? new Date(storedPrediction.predicted_start_date) : null;\n      const latestDate = latest ? new Date(latest.start_date) : null;\n      const fallbackPrediction = latestDate ? new Date(latestDate.getTime() + cycleLength * 86400000) : null;\n      const prediction = storedDate && (!latestDate || storedDate > latestDate) ? storedDate : fallbackPrediction;\n      return { cycleDay, typicalCycleLength: cycleLength, lastConfirmedPeriodDate: latest?.start_date, predictedPeriodDate: prediction?.toISOString().slice(0,10), predictionConfidence: storedDate && prediction?.getTime() === storedDate.getTime() ? storedPrediction?.confidence : "low", history: cycles };
+      const storedDate = storedPrediction?.predicted_start_date ? new Date(storedPrediction.predicted_start_date) : null;
+      const latestDate = latest ? new Date(latest.start_date) : null;
+      const fallbackPrediction = latestDate ? new Date(latestDate.getTime() + cycleLength * 86400000) : null;
+      const prediction = storedDate && (!latestDate || storedDate > latestDate) ? storedDate : fallbackPrediction;
+      return { cycleDay, typicalCycleLength: cycleLength, lastConfirmedPeriodDate: latest?.start_date, predictedPeriodDate: prediction?.toISOString().slice(0,10), predictionConfidence: storedDate && prediction?.getTime() === storedDate.getTime() ? storedPrediction?.confidence : "low", history: cycles };
     },
     async logPeriod(_userId, input) {
       const rows = await request<unknown[]>(`cycles`, { method: "POST", body: JSON.stringify({ start_date: input.startDate, end_date: input.endDate ?? null, flow: input.flow ?? null, confirmed: true }) });
