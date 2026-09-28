@@ -1,6 +1,6 @@
 type AiPermissions = {
   access_goals?: boolean; access_tasks?: boolean; access_money?: boolean;
-  can_create_goals?: boolean; can_add_expenses?: boolean;
+  can_create_goals?: boolean; can_create_reminders?: boolean; can_add_expenses?: boolean;
 };
 type AiContext = { goals?: unknown[]; tasks?: unknown[]; expenses?: unknown[] };
 
