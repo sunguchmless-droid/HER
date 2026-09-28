@@ -36,6 +36,8 @@ export default function App(){
   api.getDashboard<{ goals?: Array<{ id:string; current_amount?:number }> }>().then((dashboard) => {
    if (!active) return;
    const remoteGoal = dashboard.goals?.[0]?.current_amount;
+   const remoteId = dashboard.goals?.[0]?.id;
+   if (remoteId) setRemoteGoalId(remoteId);
    if (typeof remoteGoal === "number") setGoalAmount(remoteGoal);
    setRemoteStatus("ready");
   }).catch(() => { if (active) setRemoteStatus("offline"); });
