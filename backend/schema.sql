@@ -148,6 +148,20 @@ create table if not exists cycle_predictions (
  created_at timestamptz not null default now()
 );
 
+create table if not exists reminders (
+ id uuid primary key default gen_random_uuid(),
+ user_id uuid not null references profiles(id) on delete cascade,
+ title text not null,
+ due_at timestamptz not null,
+ source text not null default 'manual' check (source in ('manual','cycle','routine','study','relationship','ai')),
+ completed boolean not null default false,
+ created_at timestamptz not null default now()
+);
+create index if not exists reminders_user_due_idx on reminders(user_id,due_at);
+alter table reminders enable row level security;
+drop policy if exists reminders_own on reminders;
+create policy reminders_own on reminders for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 create table if not exists ai_conversations (
  id uuid primary key default gen_random_uuid(),
  user_id uuid not null references profiles(id) on delete cascade, created_at timestamptz not null default now()
