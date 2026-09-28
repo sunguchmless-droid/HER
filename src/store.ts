@@ -20,6 +20,10 @@ export const herStore = {
     state = { ...state, journalEntries: [entry, ...state.journalEntries] };
     return state;
   },
+  logConfirmedPeriod(startDate: string, flow?: string) {
+    state = { ...state, cycle: { ...state.cycle, lastConfirmedPeriodDate: startDate } };
+    return state;
+  },
   completeTask(taskId: string) {
     state = { ...state, tasks: state.tasks.map((task) => task.id === taskId ? { ...task, completed: !task.completed } : task) };
     return state;
