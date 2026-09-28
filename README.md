@@ -44,3 +44,11 @@ The default palette is soft and premium. Color customization will be added as a 
 - `src/api.ts` provides the mobile client's typed request boundary.
 - `backend/routes.ts` defines authenticated HER endpoints.
 - `backend/action-validator.ts` validates HER AI writes against user permissions before execution.
+
+
+## Executable server foundation
+- `backend/server.ts` provides the HTTP runtime and health endpoint.
+- `backend/auth.ts` isolates verified-session handling.
+- `backend/dashboard.ts` defines the repository-backed dashboard projection.
+- `npm run server` starts the development server after dependencies are installed.
+- The server intentionally refuses authenticated routes until a real token verifier is configured.
