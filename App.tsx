@@ -1,5 +1,4 @@
 import { StatusBar } from "expo-status-bar";
-import * as Notifications from "expo-notifications";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { herStore } from "./src/store";
 import { createHerApi } from "./src/api";
@@ -11,10 +10,6 @@ type Mood = "Great" | "Okay" | "Low" | "Tired";
 type Tab = "Home" | "Wellness" | "Goals" | "Journal" | "HER AI";
 type Module = "Cycle & Period" | "Self-Care" | "Relationships" | "Money" | "Study & Career";
 
-Notifications.setNotificationHandler({
- handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
-});
-
 const colors={cream:"#F8F5F2",ink:"#2D2A2A",muted:"#817A7A",blush:"#F1DDE3",lavender:"#DDD8EC",sage:"#DDE8DE",blue:"#DCE8F2",white:"#FFFFFF",line:"#E9E2DF",peach:"#F3E2D8"};
 
 const quickAccess: [Module,string,string][]=[
@@ -22,23 +17,6 @@ const quickAccess: [Module,string,string][]=[
  ["Money","KSh",colors.blue],["Study & Career","✓",colors.sage],["Goals","◎",colors.blush],["Journal","▤",colors.lavender]
 ];
 
-
-async function scheduleHerReminders(items: Array<{id:string;title:string;due_at:string}>) {
- try {
-  let permission = await Notifications.getPermissionsAsync();
-  if (!permission.granted && permission.canAskAgain) permission = await Notifications.requestPermissionsAsync();
-  if (!permission.granted) return;
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  for (const item of items.slice(0, 30)) {
-   const timestamp = Date.parse(item.due_at);
-   if (Number.isNaN(timestamp) || timestamp <= Date.now() + 5000) continue;
-   await Notifications.scheduleNotificationAsync({
-    content: { title: "HER reminder", body: item.title, data: { reminderId: item.id } },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(timestamp) },
-   });
-  }
- } catch { }
-}
 
 export default function App(){
  const [accessToken,setAccessToken]=useState<string | null>(null);
@@ -84,7 +62,6 @@ export default function App(){
    setImportantDates(dateRows ?? []);
    setRelationshipNotes(noteRows ?? []);
    setReminders(reminderRows ?? []);
-   void scheduleHerReminders(reminderRows ?? []);
    if (wellness?.energy) setEnergy(wellness.energy);
    if (typeof wellness?.sleep_minutes === "number") setSleep(`${Math.floor(wellness.sleep_minutes/60)}h ${wellness.sleep_minutes%60}m`);
    if (typeof wellness?.movement_minutes === "number") setMovement(`${wellness.movement_minutes} min`);
@@ -135,7 +112,7 @@ export default function App(){
  const [movement,setMovement]=useState("32 min");
  const [reflection,setReflection]=useState("");
  const saveWellness=async (patch:Record<string,unknown>)=>{try{await api?.saveWellness(patch)}catch{setRemoteStatus("offline")}};
- const completeReminder=async(id:string)=>{if(!api)return;try{await api.completeReminder(id);const rows=await api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>();setReminders(rows??[]);void scheduleHerReminders(rows??[])}catch{setRemoteStatus("offline")}};
+ const completeReminder=async(id:string)=>{if(!api)return;try{await api.completeReminder(id);const rows=await api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>();setReminders(rows??[]);}catch{setRemoteStatus("offline")}};
  const saveRoutine=async()=>{ if(!api||!routineTitle.trim()||savingModule)return; setSavingModule(true); try{ await api.createRoutine({title:routineTitle.trim(),timeOfDay:routineTime}); setRoutineTitle(""); const rows=await api.getRoutines<Array<{id:string;title:string;time_of_day:string;routine_items?:Array<{title:string;completed:boolean}>}>>(); setRoutines(rows??[]); const reminderRows=await api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>(); setReminders(reminderRows??[]); void scheduleHerReminders(reminderRows??[]);}catch{setRemoteStatus("offline")}finally{setSavingModule(false)} };
  const saveImportantDate=async()=>{ if(!api||!dateTitle.trim()||!dateOn||savingModule)return; setSavingModule(true); try{ await api.createImportantDate({title:dateTitle.trim(),dateOn}); setDateTitle("");setDateOn(""); const rows=await api.getImportantDates<Array<{id:string;title:string;date_on:string;notes?:string}>>();setImportantDates(rows??[]); const reminderRows=await api.getReminders<Array<{id:string;title:string;due_at:string;source?:string}>>(); setReminders(reminderRows??[]); void scheduleHerReminders(reminderRows??[]);}catch{setRemoteStatus("offline")}finally{setSavingModule(false)} };
  const saveRelationshipNote=async()=>{ if(!api||!noteBody.trim()||savingModule)return; setSavingModule(true); try{ await api.createRelationshipNote({body:noteBody.trim()});setNoteBody("");const rows=await api.getRelationshipNotes<Array<{id:string;title?:string;body:string;created_at?:string}>>();setRelationshipNotes(rows??[]);}catch{setRemoteStatus("offline")}finally{setSavingModule(false)} };
