@@ -1,10 +1,13 @@
 name: Build HER Android APK
 
 on:
+  push:
+    branches:
+      - feature/her-foundation
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -25,7 +28,27 @@ jobs:
       - name: Install Expo CLI
         run: npm install --global eas-cli
 
-      - name: Build Android APK
-        run: eas build --platform android --profile preview --non-interactive
+      - name: Link HER to Expo
+        run: eas init --non-interactive --force
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android APK
+        run: eas build --platform android --profile preview --non-interactive --wait --json > build.json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Download APK
+        shell: bash
+        run: |
+          node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('build.json','utf8')); const b=Array.isArray(d)?d[0]:d; const url=b?.artifacts?.buildUrl || b?.artifacts?.[0]?.buildUrl; if(!url) throw new Error('No APK build URL found in EAS response'); console.log(url); fs.writeFileSync('build-url.txt',url);"
+          curl -L "$(cat build-url.txt)" -o HER.apk
+
+      - name: Publish APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-${GITHUB_SHA::7}-${GITHUB_RUN_ID}"
+          gh release create "$TAG" HER.apk \
+            --title "HER Android APK" \
+            --notes "Installable HER Android preview build from GitHub Actions."
