@@ -24,5 +24,6 @@ export const apiRoutes: ApiRoute[] = [
   { method: "POST", path: "/api/routines", auth: true, description: "Create a routine" },
   { method: "GET", path: "/api/journal", auth: true, description: "User journal entries" },
   { method: "POST", path: "/api/journal", auth: true, description: "Create a journal entry" },
+  { method: "POST", path: "/api/water", auth: true, description: "Add one water glass" },
   { method: "POST", path: "/api/her-ai", auth: true, description: "HER AI request and validated action" },
 ];
