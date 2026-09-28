@@ -10,7 +10,11 @@ HER is a private personal life app for girls and young women.
 - Water tracking interaction
 - Quick access modules
 - Bottom navigation for Home, Wellness, Goals, Journal, and HER AI
-- Placeholder routes ready for the next build phase
+- Real core module screens for cycle, money, study/career, self-care, and relationships
+- Shared HER data types and seed data
+- Local store layer for shared app state
+- HER AI request/action contract with backend boundary
+- TypeScript validation script (`npm run typecheck`)
 
 ## Run locally
 npm install
