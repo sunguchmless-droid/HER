@@ -38,3 +38,9 @@ The default palette is soft and premium. Color customization will be added as a 
 - `backend/auth-contract.md` defines the authenticated user boundary.
 - `backend/repository-contract.md` defines user-scoped persistence functions.
 - `backend/config.ts` validates required server configuration.
+
+
+## API layer
+- `src/api.ts` provides the mobile client's typed request boundary.
+- `backend/routes.ts` defines authenticated HER endpoints.
+- `backend/action-validator.ts` validates HER AI writes against user permissions before execution.
