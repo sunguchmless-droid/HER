@@ -1,6 +1,8 @@
 import { StatusBar } from "expo-status-bar";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { herStore } from "./src/store";
+import { AuthScreen } from "./src/AuthScreen";
+import { supabase } from "./src/supabase";
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 type Mood = "Great" | "Okay" | "Low" | "Tired";
@@ -15,6 +17,10 @@ const quickAccess: [Module,string,string][]=[
 ];
 
 export default function App(){
+ const [accessToken,setAccessToken]=useState<string | null>(null);
+ const handleAuthenticated=useCallback((token:string)=>setAccessToken(token),[]);
+ useEffect(()=>{if(!supabase)return;supabase.auth.getSession().then(({data})=>setAccessToken(data.session?.access_token??null));const {data}=supabase.auth.onAuthStateChange((_event,session)=>setAccessToken(session?.access_token??null));return()=>data.subscription.unsubscribe()},[]);
+ if(!accessToken) return <><StatusBar style="dark"/><AuthScreen onAuthenticated={handleAuthenticated}/></>;
  const [tab,setTab]=useState<Tab>("Home");
  const [module,setModule]=useState<Module|null>(null);
  const initialData = herStore.get();
