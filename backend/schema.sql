@@ -187,8 +187,8 @@ create table if not exists ai_permissions (
  user_id uuid primary key references profiles(id) on delete cascade,
  access_goals boolean not null default true, access_tasks boolean not null default true,
  access_money boolean not null default false, access_wellness boolean not null default false,
- access_cycle boolean not null default false, access_journal boolean not null default false,
- can_create_reminders boolean not null default false, can_create_goals boolean not null default false,
+ access_cycle boolean not null default false, access_routines boolean not null default false, access_journal boolean not null default false,
+ can_create_tasks boolean not null default false, can_create_reminders boolean not null default false, can_create_goals boolean not null default false,
  can_add_expenses boolean not null default false, can_edit_journal boolean not null default false,
  updated_at timestamptz not null default now()
 );
