@@ -101,6 +101,16 @@ export function createHerServer(options: HerServerOptions = {}) {
       if (request.method === "GET" && url.pathname === "/api/tasks") { json(response, 200, await repository!.getDueTasks(session.userId)); return; }
       if (request.method === "POST" && url.pathname === "/api/water") { json(response, 201, await repository!.addWaterGlass(session.userId)); return; }
       if (request.method === "GET" && url.pathname === "/api/journal") { json(response, 200, await repository!.getJournalEntries(session.userId)); return; }
+      if (request.method === "GET" && url.pathname === "/api/wellness") { json(response, 200, await repository!.getWellnessCheckin(session.userId)); return; }
+      if (request.method === "POST" && url.pathname === "/api/wellness") {
+        const body=await readBody(request);
+        const allowedEnergy=["Low","Okay","Good","Full"];
+        if (body.energy !== undefined && (typeof body.energy !== "string" || !allowedEnergy.includes(body.energy))) { json(response,400,{error:"invalid energy"}); return; }
+        if (body.sleepMinutes !== undefined && (typeof body.sleepMinutes !== "number" || body.sleepMinutes < 0)) { json(response,400,{error:"invalid sleepMinutes"}); return; }
+        if (body.movementMinutes !== undefined && (typeof body.movementMinutes !== "number" || body.movementMinutes < 0)) { json(response,400,{error:"invalid movementMinutes"}); return; }
+        if (body.reflection !== undefined && typeof body.reflection !== "string") { json(response,400,{error:"invalid reflection"}); return; }
+        json(response,201,await repository!.saveWellnessCheckin(session.userId,{energy:body.energy as string|undefined,sleepMinutes:body.sleepMinutes as number|undefined,movementMinutes:body.movementMinutes as number|undefined,reflection:body.reflection as string|undefined})); return;
+      }
       if (request.method === "GET" && url.pathname === "/api/expenses") { json(response, 200, await repository!.getExpenses(session.userId)); return; }
       if (request.method === "POST" && url.pathname === "/api/journal") { const body=await readBody(request); if(typeof body.body!=="string"||!body.body.trim()){json(response,400,{error:"body is required"});return;} json(response,201,await repository!.addJournalEntry(session.userId,body.body.trim())); return; }
       if (request.method === "POST" && url.pathname === "/api/cycle") { const body=await readBody(request); if(typeof body.startDate!=="string"||!body.startDate.trim()){json(response,400,{error:"startDate is required"});return;} json(response,201,await repository!.logPeriod(session.userId,{startDate:body.startDate,flow:typeof body.flow==="string"?body.flow:undefined,endDate:typeof body.endDate==="string"?body.endDate:undefined})); return; }
