@@ -11,6 +11,9 @@ export type HerRepository = {
   getWellnessCheckin(userId: string): Promise<unknown | null>;
   saveWellnessCheckin(userId: string, input: { energy?: string; sleepMinutes?: number; movementMinutes?: number; reflection?: string }): Promise<unknown>;
   getExpenses(userId: string): Promise<unknown[]>;
+  getRoutines(userId: string): Promise<unknown[]>;
+  getImportantDates(userId: string): Promise<unknown[]>;
+  getRelationshipNotes(userId: string): Promise<unknown[]>;
   addExpense(userId: string, input: { category: string; amount: number; date?: string }): Promise<unknown>;
   getJournalEntries(userId: string): Promise<unknown[]>;
   addJournalEntry(userId: string, body: string): Promise<unknown>;
@@ -105,6 +108,15 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
       if (rows?.length) return rows[0];
       const created = await request<unknown[]>(`wellness_checkins`, { method: "POST", body: JSON.stringify({ energy: input.energy ?? null, sleep_minutes: input.sleepMinutes ?? null, movement_minutes: input.movementMinutes ?? null, reflection: input.reflection ?? null, recorded_on: today }) });
       return created?.[0] ?? null;
+    },
+    async getRoutines() {
+      return request<unknown[]>(`routines?select=id,title,time_of_day,routine_items(id,title,sort_order,completed)&order=created_at.asc`);
+    },
+    async getImportantDates() {
+      return request<unknown[]>(`important_dates?select=id,title,date_on,notes&order=date_on.asc`);
+    },
+    async getRelationshipNotes() {
+      return request<unknown[]>(`relationship_notes?select=id,title,body,created_at&order=created_at.desc`);
     },
     async getExpenses() {
       return request<unknown[]>(`expenses?select=id,category,amount,occurred_on&order=occurred_on.desc`);
