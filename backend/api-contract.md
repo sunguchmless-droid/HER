@@ -7,3 +7,7 @@ GET /api/dashboard returns profile, today's mood, water count, active goals, due
 POST /api/her-ai accepts a message and optional conversation_id. The server verifies the session, loads AI permissions, fetches minimal relevant context, calls the model, validates returned actions, executes approved actions transactionally, logs the action, and returns the result.
 
 The model never receives database credentials and never chooses a trusted user ID.
+
+## Persistence status
+
+The repository layer now supports authenticated persistence for goals, tasks, water, expenses, and journal entries. All writes are performed with the authenticated Supabase session and remain subject to database row-level security.
