@@ -113,8 +113,8 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
       return rows?.[0] ?? null;
     },
     async logCycleSymptom(_userId, input) {
-      // Symptoms are represented through mood/wellness until a dedicated symptoms table is added.
-      return { symptom: input.symptom, recordedOn: input.recordedOn ?? new Date().toISOString().slice(0, 10) };
+      const rows = await request<unknown[]>(`cycle_symptoms`, { method: "POST", body: JSON.stringify({ symptom: input.symptom, recorded_on: input.recordedOn ?? new Date().toISOString().slice(0, 10) }) });
+      return rows?.[0] ?? null;
     },
   };
 }
