@@ -4,6 +4,7 @@ import { requireSession, TokenVerifier } from "./auth";
 import { buildDashboard, DashboardRepository } from "./dashboard";
 import { createSupabaseConfig, verifySupabaseAccessToken } from "./supabase";
 import { createSupabaseRepository, HerRepository } from "./repository";
+import { askOpenAI } from "./ai";
 
 export type ServerContext = { userId: string; accessToken: string };
 export type HerServerOptions = { verifyToken?: TokenVerifier; repositoryFactory?: (accessToken: string) => HerRepository };
@@ -63,24 +64,37 @@ export function createHerServer(options: HerServerOptions = {}) {
         return;
       }
       if (request.method === "POST" && url.pathname === "/api/her-ai") {
+        if (!repository) { json(response, 501, { error: "Repository not configured" }); return; }
         const body = await readBody(request);
         const message = typeof body.message === "string" ? body.message.trim() : "";
         if (!message) { json(response, 400, { error: "message is required" }); return; }
-        const permissions = await repository!.getAiPermissions(session.userId);
-        const lower = message.toLowerCase();
-        let action: any = { type: "none" };
-        let reply = "I can help you turn that into a simple next step.";
-        if ((lower.includes("savings goal") || lower.includes("save ksh")) && permissions.can_create_goals) {
-          action = { type: "create_goal", title: "Savings goal" };
-          reply = "I can help set up a savings goal. Tell me the amount and deadline you want.";
-        } else if ((lower.includes("task") || lower.includes("assignment")) && permissions.access_tasks) {
-          action = { type: "create_task", title: message };
-          reply = "I can turn that into a task. I’ve kept the wording so you can refine the details.";
-        } else if (lower.includes("expense") && permissions.can_add_expenses) {
-          reply = "I can add an expense once you give me the category and amount.";
+        const permissions = await repository.getAiPermissions(session.userId);
+        if (!process.env.OPENAI_API_KEY) {
+          json(response, 503, { error: "HER AI is not configured on the server yet." });
+          return;
         }
-        await repository!.logAiAction(session.userId, action.type, action, action.type === "none" ? "rejected" : "requested");
-        json(response, 200, { reply, action });
+        const context: Record<string, unknown> = {};
+        if (permissions.access_goals) context.goals = await repository.getGoals(session.userId);
+        if (permissions.access_tasks) context.tasks = await repository.getDueTasks(session.userId);
+        if (permissions.access_money) context.expenses = await repository.getExpenses(session.userId);
+        const result = await askOpenAI(process.env.OPENAI_API_KEY, message, context, permissions);
+        const action = result.action as any;
+        let executedAction = { ...action };
+        let status = "rejected";
+        if (action.type === "create_goal" && permissions.can_create_goals && typeof action.title === "string") {
+          executedAction = await repository.createGoal(session.userId, { title: action.title, targetAmount: typeof action.targetAmount === "number" ? action.targetAmount : undefined, deadline: typeof action.deadline === "string" ? action.deadline : undefined }) as any;
+          status = "completed";
+        } else if (action.type === "create_task" && permissions.access_tasks && typeof action.title === "string") {
+          executedAction = await repository.createTask(session.userId, { title: action.title, dueDate: typeof action.dueDate === "string" ? action.dueDate : undefined, category: ["study","career","personal"].includes(action.category) ? action.category : "personal" }) as any;
+          status = "completed";
+        } else if (action.type === "add_expense" && permissions.can_add_expenses && typeof action.category === "string" && typeof action.amount === "number") {
+          executedAction = await repository.addExpense(session.userId, { category: action.category, amount: action.amount, date: typeof action.date === "string" ? action.date : undefined }) as any;
+          status = "completed";
+        } else if (action.type === "none") {
+          status = "rejected";
+        }
+        await repository.logAiAction(session.userId, action.type, { requested: action, executed: executedAction }, status);
+        json(response, 200, { reply: result.reply, action: status === "completed" ? { type: action.type, result: executedAction } : action, status });
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/goals") { json(response, 200, await repository!.getGoals(session.userId)); return; }
