@@ -1,8 +1,8 @@
 type AiPermissions = {
-  access_goals?: boolean; access_tasks?: boolean; access_money?: boolean;
-  can_create_goals?: boolean; can_create_reminders?: boolean; can_add_expenses?: boolean;
+  access_goals?: boolean; access_tasks?: boolean; access_money?: boolean; access_wellness?: boolean; access_cycle?: boolean; access_routines?: boolean; access_journal?: boolean;
+  can_create_goals?: boolean; can_create_tasks?: boolean; can_create_reminders?: boolean; can_add_expenses?: boolean;
 };
-type AiContext = { goals?: unknown[]; tasks?: unknown[]; expenses?: unknown[] };
+type AiContext = { goals?: unknown[]; tasks?: unknown[]; expenses?: unknown[]; wellness?: unknown; cycle?: unknown; routines?: unknown[]; journal?: unknown[] };
 
 export async function askOpenAI(apiKey: string, message: string, context: AiContext, permissions: AiPermissions) {
   const response = await fetch("https://api.openai.com/v1/responses", {
