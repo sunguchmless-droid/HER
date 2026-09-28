@@ -26,6 +26,7 @@ export type HerRepository = {
   logCycleSymptom(userId: string, input: { symptom: string; recordedOn?: string }): Promise<unknown>;
   getAiPermissions(userId: string): Promise<any>;
   getReminders(userId: string): Promise<unknown[]>;
+  completeReminder(userId: string, reminderId: string): Promise<unknown>;
   createReminder(userId: string, input: { title: string; dueAt: string; source?: "manual"|"cycle"|"routine"|"study"|"relationship"|"ai" }): Promise<unknown>;
   logAiAction(userId: string, actionType: string, payload: unknown, status: string): Promise<unknown>;
 };
@@ -210,6 +211,7 @@ export function createSupabaseRepository(accessToken: string, baseUrl: string, a
       return request<unknown[]>(`reminders?select=id,title,due_at,source,completed&completed=eq.false&order=due_at.asc`);
     },
     async createReminder(_userId,input) { const rows=await request<unknown[]>(`reminders`,{method:"POST",body:JSON.stringify({title:input.title,due_at:input.dueAt,source:input.source??"manual",completed:false})}); return rows?.[0]??null; },
+    async completeReminder(_userId, reminderId) { const rows=await request<unknown[]>(`reminders?id=eq.${encodeURIComponent(reminderId)}`,{method:"PATCH",body:JSON.stringify({completed:true})}); return rows?.[0]??null; },
     async getAiPermissions() {
       const rows = await request<any[]>(`ai_permissions?select=*`);
       return rows[0] ?? { access_goals:true, access_tasks:true, access_money:false, access_wellness:false, access_cycle:false, access_journal:false, can_create_reminders:false, can_create_goals:false, can_add_expenses:false, can_edit_journal:false };
