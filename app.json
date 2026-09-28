@@ -14,7 +14,8 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F8F5F2"
-      }
+      },
+      "package": "com.herapp.life"
     },
     "plugins": [
       "expo-notifications"
