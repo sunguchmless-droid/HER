@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - feature/her-foundation
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
@@ -53,10 +57,9 @@ jobs:
           apksigner verify --verbose HER.apk
 
       - name: Publish APK release
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="android-${GITHUB_SHA::7}-${GITHUB_RUN_ID}"
-          gh release create "$TAG" HER.apk \
-            --title "HER Android APK" \
-            --notes "Installable HER Android preview build from GitHub Actions."
+          gh release create "$TAG" HER.apk             --title "HER Android APK"             --notes "Installable HER Android preview build from GitHub Actions."
