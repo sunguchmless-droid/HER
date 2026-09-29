@@ -1,0 +1,17 @@
+name: HER Actions Smoke Test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm GitHub Actions trigger
+        run: echo "HER GitHub Actions is running"
