@@ -6,8 +6,8 @@ export default function App() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.card}>
         <Text style={styles.brand}>HER</Text>
-        <Text style={styles.title}>Native startup test</Text>
-        <Text style={styles.body}>If you can see this screen, the Android native runtime is launching correctly.</Text>
+        <Text style={styles.title}>HER Android startup</Text>
+        <Text style={styles.body}>Android is launching HER correctly.</Text>
       </View>
     </SafeAreaView>
   );
