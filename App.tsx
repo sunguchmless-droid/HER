@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   dayCheck:{fontSize:11,color:"#FFFFFF",fontWeight:"900"},
   dayLabel:{fontSize:10,color:"#958A91",fontWeight:"700"},
   cardTitle:{fontSize:18,fontWeight:"800"},
-  todayItem:{flexDirection:"row",alignItems:"center,paddingVertical:10,borderTopWidth:1,borderTopColor:"#F1E9EE"},
+  todayItem:{flexDirection:"row",alignItems:"center",paddingVertical:10,borderTopWidth:1,borderTopColor:"#F1E9EE"},
   itemIcon:{width:31,fontSize:17},
   itemText:{flex:1,fontSize:14,color:"#514950"},
   aiCard:{flexDirection:"row",alignItems:"center",borderRadius:23,padding:16,marginBottom:22},
