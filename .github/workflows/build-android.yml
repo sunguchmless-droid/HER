@@ -3,6 +3,7 @@ name: Build HER Android APK
 on:
   push:
     branches:
+      - main
       - feature/her-foundation
   workflow_dispatch:
 
