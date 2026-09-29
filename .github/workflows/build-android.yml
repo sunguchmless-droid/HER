@@ -8,28 +8,57 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout final HER build branch
         uses: actions/checkout@v4
+        with:
+          ref: feature/her-foundation
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+
+      - name: Validate Expo dependency alignment
+        run: npx expo-doctor
 
       - name: Install Expo CLI
         run: npm install --global eas-cli
 
-      - name: Build Android APK
-        run: eas build --platform android --profile preview --non-interactive
+      - name: Link HER to Expo
+        run: eas init --non-interactive --force
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android APK
+        run: eas build --platform android --profile preview --non-interactive --wait --json > build.json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Download APK
+        shell: bash
+        run: |
+          node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('build.json','utf8')); const b=Array.isArray(d)?d[0]:d; const url=b?.artifacts?.buildUrl || b?.artifacts?.[0]?.buildUrl; if(!url) throw new Error('No APK build URL found in EAS response'); console.log(url); fs.writeFileSync('build-url.txt',url);"
+          curl -L "$(cat build-url.txt)" -o HER.apk
+
+      - name: Verify APK
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq apksigner
+          apksigner verify --verbose HER.apk
+
+      - name: Publish APK release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-${GITHUB_SHA::7}-${GITHUB_RUN_ID}"
+          gh release create "$TAG" HER.apk             --title "HER Android APK"             --notes "Installable HER Android preview build from the final HER Android startup fix branch."
