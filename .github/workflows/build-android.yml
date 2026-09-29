@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Validate Expo dependency alignment
+        run: npx expo-doctor
+
       - name: Install Expo CLI
         run: npm install --global eas-cli
 
