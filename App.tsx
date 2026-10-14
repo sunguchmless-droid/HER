@@ -75,7 +75,9 @@ export default function App() {
   const [wallpaper, setWallpaper] = useState<(typeof wallpapers)[number]["key"]>("crystal");
   const [showTutorial, setShowTutorial] = useState(true);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [streak, setStreak] = useState(12);
+  const [streak, setStreak] = useState(0);
+  const [lastCheckInDate, setLastCheckInDate] = useState("");
+  const [storageLoaded, setStorageLoaded] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
   const [mood, setMood] = useState("Happy");
   const [water, setWater] = useState(5);
@@ -101,9 +103,40 @@ export default function App() {
       if (saved["her.onboarding.completed.v1"] === "yes") setShowTutorial(false);
       if (themes.includes(saved["her.theme.v1"] as ThemeName)) setThemeName(saved["her.theme.v1"] as ThemeName);
       if (wallpapers.some((item) => item.key === saved["her.wallpaper.v1"])) setWallpaper(saved["her.wallpaper.v1"] as (typeof wallpapers)[number]["key"]);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      AsyncStorage.multiGet(["her.mood.v1", "her.water.v1", "her.saved.v1", "her.goal.v1", "her.cycle-day.v1", "her.journal.v1", "her.streak.v1", "her.checkin-date.v1"]).then((items) => {
+        if (!active) return;
+        const saved = Object.fromEntries(items);
+        if (saved["her.mood.v1"]) setMood(saved["her.mood.v1"]!);
+        if (saved["her.water.v1"] && Number.isFinite(Number(saved["her.water.v1"]))) setWater(Math.max(0, Math.min(8, Number(saved["her.water.v1"]))));
+        if (saved["her.saved.v1"] && Number.isFinite(Number(saved["her.saved.v1"]))) setSaved(Math.max(0, Number(saved["her.saved.v1"])));
+        if (saved["her.goal.v1"] && Number.isFinite(Number(saved["her.goal.v1"]))) setGoal(Math.max(1, Number(saved["her.goal.v1"])));
+        if (saved["her.cycle-day.v1"] && Number.isFinite(Number(saved["her.cycle-day.v1"]))) setCycleDay(Math.max(1, Math.min(40, Number(saved["her.cycle-day.v1"]))));
+        if (saved["her.journal.v1"] !== null) setJournal(saved["her.journal.v1"] ?? "");
+        const savedStreak = Number(saved["her.streak.v1"] ?? 0);
+        setStreak(Number.isFinite(savedStreak) ? Math.max(0, savedStreak) : 0);
+        const today = new Date().toLocaleDateString("en-CA");
+        const previous = saved["her.checkin-date.v1"] ?? "";
+        setLastCheckInDate(previous);
+        setCheckedIn(previous === today);
+        setStorageLoaded(true);
+      }).catch(() => setStorageLoaded(true));
+    });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!storageLoaded) return;
+    AsyncStorage.multiSet([
+      ["her.mood.v1", mood],
+      ["her.water.v1", String(water)],
+      ["her.saved.v1", String(saved)],
+      ["her.goal.v1", String(goal)],
+      ["her.cycle-day.v1", String(cycleDay)],
+      ["her.journal.v1", journal],
+      ["her.streak.v1", String(streak)],
+    ]).catch(() => {});
+  }, [storageLoaded, mood, water, saved, goal, cycleDay, journal, streak]);
 
   const finishTutorial = async () => {
     try { await AsyncStorage.setItem("her.onboarding.completed.v1", "yes"); } catch {}
@@ -121,10 +154,16 @@ export default function App() {
   const go = (next: Screen) => setScreen(next);
 
   const dailyCheckIn = () => {
-    if (!checkedIn) {
-      setCheckedIn(true);
-      setStreak((value) => value + 1);
-    }
+    if (checkedIn) return;
+    const today = new Date().toLocaleDateString("en-CA");
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = yesterdayDate.toLocaleDateString("en-CA");
+    const nextStreak = lastCheckInDate === yesterday ? streak + 1 : 1;
+    setCheckedIn(true);
+    setLastCheckInDate(today);
+    setStreak(nextStreak);
+    AsyncStorage.multiSet([["her.checkin-date.v1", today], ["her.streak.v1", String(nextStreak)]]).catch(() => {});
   };
 
   const askAI = () => {
