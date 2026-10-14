@@ -4,7 +4,7 @@ create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
-as $
+as $$
 begin
   insert into public.profiles (id, display_name)
   values (new.id, coalesce(new.raw_user_meta_data->>'display_name', split_part(coalesce(new.email,''), '@', 1), 'there'))
@@ -14,7 +14,7 @@ begin
   on conflict (user_id) do nothing;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -205,6 +205,26 @@ create index if not exists cycles_user_date_idx on cycles(user_id,start_date des
 create index if not exists ai_messages_conversation_idx on ai_messages(conversation_id,created_at);
 
 -- Row-level security: every user-owned table is isolated to auth.uid().
+alter table profiles enable row level security;
+alter table goals enable row level security;
+alter table tasks enable row level security;
+alter table expenses enable row level security;
+alter table routines enable row level security;
+alter table routine_items enable row level security;
+alter table important_dates enable row level security;
+alter table relationship_notes enable row level security;
+alter table journal_entries enable row level security;
+alter table mood_checkins enable row level security;
+alter table water_logs enable row level security;
+alter table wellness_checkins enable row level security;
+alter table cycles enable row level security;
+alter table cycle_symptoms enable row level security;
+alter table cycle_predictions enable row level security;
+alter table reminders enable row level security;
+alter table ai_conversations enable row level security;
+alter table ai_messages enable row level security;
+alter table ai_action_logs enable row level security;
+alter table ai_permissions enable row level security;
 drop policy if exists profiles_own on profiles;
 create policy profiles_own on profiles for all using (id = auth.uid()) with check (id = auth.uid());
 drop policy if exists goals_own on goals;
@@ -238,7 +258,7 @@ create policy predictions_own on cycle_predictions for all using (user_id = auth
 drop policy if exists ai_conversations_own on ai_conversations;
 create policy ai_conversations_own on ai_conversations for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists ai_messages_own on ai_messages;
-create policy ai_messages_own on ai_messages for all using (conversation_id in (select id from ai_conversations where user_id = auth.uid()));
+create policy ai_messages_own on ai_messages for all using (conversation_id in (select id from ai_conversations where user_id = auth.uid())) with check (conversation_id in (select id from ai_conversations where user_id = auth.uid()));
 drop policy if exists ai_actions_own on ai_action_logs;
 create policy ai_actions_own on ai_action_logs for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists ai_permissions_own on ai_permissions;
