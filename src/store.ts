@@ -21,7 +21,7 @@ export const herStore = {
     return state;
   },
   logConfirmedPeriod(startDate: string, flow?: string) {
-    state = { ...state, cycle: { ...state.cycle, lastConfirmedPeriodDate: startDate } };
+    state = { ...state, cycle: { cycleDay: 1, typicalCycleLength: 28, ...state.cycle, lastConfirmedPeriodDate: startDate } };
     return state;
   },
   completeTask(taskId: string) {
