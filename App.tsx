@@ -317,7 +317,7 @@ const Background = () => (
     <ScreenHeader title="Savings & Goals" subtitle="Big dreams need small steps 💗" />
     <Card style={{ backgroundColor: t.soft }}>
       <View style={styles.rowBetween}><Text style={[styles.cardTitle,{color:t.text}]}>Total Saved</Text><Text style={{color:t.pink,fontWeight:"900"}}>KSh {saved}</Text></View>
-      <View style={styles.progress}><View style={[styles.progressFill,{width: Math.min(100,saved/goal*100)+"%",backgroundColor:t.pink}]}/></View>
+      <View style={styles.progress}><View style={[styles.progressFill,{width: `${Math.min(100, saved / goal * 100)}%`,backgroundColor:t.pink}]}/></View>
       <Text style={styles.muted}>Goal: KSh {goal}</Text>
     </Card>
     {["Travel the World","New Laptop","Self Care Fund"].map((g,i)=><Card key={g}><View style={styles.rowBetween}><View><Text style={[styles.cardTitle,{color:t.text}]}>{g}</Text><Text style={styles.muted}>{i===0?"KSh 250 / KSh 1,500":i===1?"KSh 100 / KSh 800":"KSh 50 / KSh 500"}</Text></View><Text style={{fontSize:25}}>{["✈️","💻","🛍️"][i]}</Text></View><TouchableOpacity onPress={()=>setSaved(v=>Math.min(goal,v+50))} style={[styles.addSmall,{backgroundColor:t.glow}]}><Text style={{color:t.pink,fontWeight:"900"}}>Add KSh 50</Text></TouchableOpacity></Card>)}
