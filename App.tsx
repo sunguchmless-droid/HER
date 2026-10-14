@@ -50,6 +50,7 @@ const wallpapers = [
   { key: "botanical", label: "Botanical", color: "#E7F0E5", accent: "#A8C7A0" },
   { key: "minimal", label: "Cream Minimal", color: "#F5F0E8", accent: "#D8C9B5" },
 ] as const;
+const localDateKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const motivations = [
   "You do not have to do everything today. Just take the next kind step.",
   "Your pace is valid. Small progress is still progress.",
@@ -115,7 +116,7 @@ export default function App() {
         if (saved["her.journal.v1"] !== null) setJournal(saved["her.journal.v1"] ?? "");
         const savedStreak = Number(saved["her.streak.v1"] ?? 0);
         setStreak(Number.isFinite(savedStreak) ? Math.max(0, savedStreak) : 0);
-        const today = new Date().toLocaleDateString("en-CA");
+        const today = localDateKey();
         const previous = saved["her.checkin-date.v1"] ?? "";
         setLastCheckInDate(previous);
         setCheckedIn(previous === today);
@@ -158,7 +159,7 @@ export default function App() {
     const today = new Date().toLocaleDateString("en-CA");
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterday = yesterdayDate.toLocaleDateString("en-CA");
+    const yesterday = localDateKey(yesterdayDate);
     const nextStreak = lastCheckInDate === yesterday ? streak + 1 : 1;
     setCheckedIn(true);
     setLastCheckInDate(today);
