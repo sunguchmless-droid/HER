@@ -96,7 +96,14 @@ export default function App() {
     </View>
   );
 
-const Background = () => (\n    <View pointerEvents="none" style={StyleSheet.absoluteFill}>\n      <ImageBackground source={{ uri: HER_WALLPAPER }} resizeMode="cover" style={StyleSheet.absoluteFill} imageStyle={{ opacity: 0.72 }} />\n      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFF4FB", opacity: 0.22 }]} />\n    </View>\n  );\n\n  const Card = ({ children, style }: { children: React.ReactNode; style?: any }) => (
+const Background = () => (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <ImageBackground source={{ uri: HER_WALLPAPER }} resizeMode="cover" style={StyleSheet.absoluteFill} imageStyle={{ opacity: 0.72 }} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFF4FB", opacity: 0.22 }]} />
+    </View>
+  );
+
+  const Card = ({ children, style }: { children: React.ReactNode; style?: any }) => (
     <View style={[styles.card, { backgroundColor: t.card }, style]}>{children}</View>
   );
 
