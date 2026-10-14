@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Alert,
   ImageBackground,
@@ -39,13 +40,41 @@ const modules = [
 ];
 
 const themes: ThemeName[] = ["Aurora", "Blossom", "Lavender", "Ocean", "Sunset"];
+const wallpapers = [
+  { key: "crystal", label: "Pink Crystal", color: "#F9D8EB", accent: "#E8A9CF" },
+  { key: "blush", label: "Soft Blush", color: "#FFF0F4", accent: "#F4C4D4" },
+  { key: "lavender", label: "Lavender Dream", color: "#EEE7FF", accent: "#C7B7F2" },
+  { key: "ocean", label: "Pearl Ocean", color: "#DFF4FB", accent: "#A8DDEA" },
+  { key: "sunset", label: "Rose Gold", color: "#FCE5D8", accent: "#E9BBA7" },
+  { key: "midnight", label: "Midnight Glow", color: "#30243F", accent: "#74547F" },
+  { key: "botanical", label: "Botanical", color: "#E7F0E5", accent: "#A8C7A0" },
+  { key: "minimal", label: "Cream Minimal", color: "#F5F0E8", accent: "#D8C9B5" },
+] as const;
+const motivations = [
+  "You do not have to do everything today. Just take the next kind step.",
+  "Your pace is valid. Small progress is still progress.",
+  "You deserve the same patience and care you give to other people.",
+  "A fresh day is a chance to begin again, without judging yesterday.",
+  "You are allowed to rest and still be ambitious.",
+  "Your future is built by the little choices you make today.",
+  "You are growing, even when progress feels quiet.",
+  "Protect your peace, honour your needs, and keep going gently.",
+  "You do not need to be perfect to be proud of yourself.",
+  "One difficult moment does not define your whole day.",
+  "Make room for joy, even while you work toward your goals.",
+  "You can change your mind, start over, and choose a new path.",
+  "Speak to yourself like someone you love.",
+  "Your worth is not measured by your productivity.",
+];
 
 const HER_WALLPAPER = "data:image/jpeg;base64,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";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("Home");
   const [themeName, setThemeName] = useState<ThemeName>("Aurora");
-  const [wallpaper, setWallpaper] = useState<"shimmer" | "sparkle" | "clean">("shimmer");
+  const [wallpaper, setWallpaper] = useState<(typeof wallpapers)[number]["key"]>("crystal");
+  const [showTutorial, setShowTutorial] = useState(true);
+  const [tutorialStep, setTutorialStep] = useState(0);
   const [streak, setStreak] = useState(12);
   const [checkedIn, setCheckedIn] = useState(false);
   const [mood, setMood] = useState("Happy");
@@ -60,6 +89,34 @@ export default function App() {
   const [relationshipNote, setRelationshipNote] = useState("");
 
   const t = themeMap[themeName];
+  const selectedWallpaper = wallpapers.find((item) => item.key === wallpaper) ?? wallpapers[0];
+  const dayNumber = Math.floor(Date.now() / 86400000);
+  const dailyMotivation = motivations[((dayNumber % motivations.length) + motivations.length) % motivations.length];
+
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.multiGet(["her.onboarding.completed.v1", "her.theme.v1", "her.wallpaper.v1"]).then((items) => {
+      if (!active) return;
+      const saved = Object.fromEntries(items);
+      if (saved["her.onboarding.completed.v1"] === "yes") setShowTutorial(false);
+      if (themes.includes(saved["her.theme.v1"] as ThemeName)) setThemeName(saved["her.theme.v1"] as ThemeName);
+      if (wallpapers.some((item) => item.key === saved["her.wallpaper.v1"])) setWallpaper(saved["her.wallpaper.v1"] as (typeof wallpapers)[number]["key"]);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const finishTutorial = async () => {
+    try { await AsyncStorage.setItem("her.onboarding.completed.v1", "yes"); } catch {}
+    setShowTutorial(false);
+  };
+  const chooseTheme = (name: ThemeName) => {
+    setThemeName(name);
+    AsyncStorage.setItem("her.theme.v1", name).catch(() => {});
+  };
+  const chooseWallpaper = (key: (typeof wallpapers)[number]["key"]) => {
+    setWallpaper(key);
+    AsyncStorage.setItem("her.wallpaper.v1", key).catch(() => {});
+  };
 
   const go = (next: Screen) => setScreen(next);
 
@@ -98,9 +155,12 @@ export default function App() {
   );
 
 const Background = () => (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <ImageBackground source={{ uri: HER_WALLPAPER }} resizeMode="cover" style={StyleSheet.absoluteFill} imageStyle={{ opacity: 0.72 }} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFF4FB", opacity: 0.22 }]} />
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: selectedWallpaper.color }]}>
+      {wallpaper === "crystal" && <ImageBackground source={{ uri: HER_WALLPAPER }} resizeMode="cover" style={StyleSheet.absoluteFill} imageStyle={{ opacity: 0.58 }} />}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: selectedWallpaper.color, opacity: wallpaper === "crystal" ? 0.30 : 0.94 }]} />
+      <View style={{ position: "absolute", top: -48, right: -35, width: 190, height: 190, borderRadius: 100, backgroundColor: selectedWallpaper.accent, opacity: wallpaper === "midnight" ? 0.35 : 0.40 }} />
+      <View style={{ position: "absolute", top: 260, left: -80, width: 180, height: 180, borderRadius: 100, backgroundColor: selectedWallpaper.accent, opacity: 0.24 }} />
+      <View style={{ position: "absolute", bottom: 80, right: -55, width: 150, height: 150, borderRadius: 100, backgroundColor: selectedWallpaper.accent, opacity: 0.24 }} />
     </View>
   );
 
@@ -156,7 +216,7 @@ const Background = () => (
 
       <Card style={{ backgroundColor: t.soft }}>
         <Text style={[styles.eyebrow, { color: t.purple }]}>TODAY'S AFFIRMATION</Text>
-        <Text style={[styles.affirmation, { color: t.text }]}>I am enough. I am growing. I am becoming the best version of myself.</Text>
+        <Text style={[styles.affirmation, { color: t.text }]}>{dailyMotivation}</Text>
         <Text style={{ alignSelf: "flex-end", color: t.pink, fontSize: 20 }}>♥</Text>
       </Card>
 
@@ -259,7 +319,7 @@ const Background = () => (
   const Themes = () => <>
     <ScreenHeader title="Themes & Wallpapers" subtitle="Make HER yours ✨" />
     <Card><Text style={[styles.cardTitle,{color:t.text}]}>Choose a Theme</Text><View style={styles.themeGrid}>{themes.map((name)=><TouchableOpacity key={name} onPress={()=>setThemeName(name)} style={[styles.themeChoice,{backgroundColor:themeMap[name].glow,borderColor:themeName===name?themeMap[name].pink:"#EEE5EB"}]}><View style={[styles.themePreview,{backgroundColor:themeMap[name].purple}]}><Text style={{color:"#FFF"}}>✦</Text></View><Text style={styles.themeName}>{name}</Text></TouchableOpacity>)}</View></Card>
-    <Card><Text style={[styles.cardTitle,{color:t.text}]}>Wallpapers</Text>{[["shimmer","Shimmer ✨"],["sparkle","Sparkle ✦"],["clean","Clean & Calm"]].map(([key,label])=><TouchableOpacity key={key} onPress={()=>setWallpaper(key as any)} style={[styles.settingRow,wallpaper===key&&{backgroundColor:t.glow}]}><Text style={styles.settingLabel}>{label}</Text><Text style={{color:wallpaper===key?t.pink:"#A9A0A7",fontWeight:"900"}}>{wallpaper===key?"✓":"○"}</Text></TouchableOpacity>)}</Card>
+    <Card><Text style={[styles.cardTitle,{color:t.text}]}>Wallpapers</Text><Text style={styles.muted}>Choose a look for your space. Your choice is saved on this device.</Text><View style={styles.themeGrid}>{wallpapers.map((item)=><TouchableOpacity key={item.key} onPress={()=>chooseWallpaper(item.key)} style={[styles.themeChoice,{backgroundColor:item.color,borderColor:wallpaper===item.key?t.pink:"#EEE5EB"}]}><View style={{height:64,borderRadius:13,backgroundColor:item.accent,alignItems:"center",justifyContent:"center",marginBottom:7,overflow:"hidden"}}><Text style={{fontSize:27,color:item.key==="midnight"?"#FFFFFF":"#8E5A82"}}>{item.key==="botanical"?"❀":item.key==="ocean"?"✧":item.key==="midnight"?"☾":item.key==="minimal"?"◇":"✦"}</Text></View><Text style={styles.themeName}>{item.label}</Text><Text style={{fontSize:10,color:wallpaper===item.key?t.pink:"#817780",marginTop:3}}>{wallpaper===item.key?"Applied ✓":"Tap to apply"}</Text></TouchableOpacity>)}</View></Card>
   </>;
 
   const More = () => <>
@@ -299,6 +359,35 @@ const Background = () => (
       default: return <Home />;
     }
   };
+
+  if (showTutorial) {
+    const tutorial = [
+      { icon: "✦", title: "Welcome to HER", body: "Your personal space for wellbeing, goals, money, studies, relationships, and everyday life." },
+      { icon: "🌸", title: "Make HER yours", body: "Explore your dashboard, trackers, journal, goals, and wallpaper gallery. Your choices can be changed later." },
+      { icon: "💗", title: "Check in with yourself", body: "Use daily check-ins and motivation to build a gentle routine. Cycle dates are estimates until you confirm them." },
+      { icon: "🔔", title: "Stay organised", body: "Explore tasks and reminders, and visit More for themes and personal settings." },
+    ];
+    const item = tutorial[tutorialStep];
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.bg }}>
+        <View style={{ flex: 1, padding: 26, justifyContent: "center" }}>
+          <View style={{ alignSelf: "flex-end" }}><TouchableOpacity onPress={finishTutorial}><Text style={{ color: t.pink, fontWeight: "800", padding: 10 }}>Skip</Text></TouchableOpacity></View>
+          <View style={{ backgroundColor: selectedWallpaper.color, borderRadius: 32, padding: 28, alignItems: "center", marginBottom: 28 }}>
+            <Text style={{ fontSize: 64, color: t.pink, marginBottom: 18 }}>{item.icon}</Text>
+            <Text style={{ fontSize: 30, fontWeight: "900", color: t.text, textAlign: "center" }}>{item.title}</Text>
+            <Text style={{ fontSize: 15, lineHeight: 24, color: t.text, textAlign: "center", marginTop: 14 }}>{item.body}</Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 24 }}>
+            {tutorial.map((_, index) => <View key={index} style={{ width: index === tutorialStep ? 24 : 8, height: 8, borderRadius: 5, backgroundColor: index === tutorialStep ? t.pink : t.glow }} />)}
+          </View>
+          <TouchableOpacity onPress={() => tutorialStep < tutorial.length - 1 ? setTutorialStep(tutorialStep + 1) : finishTutorial()} style={{ backgroundColor: t.pink, padding: 17, borderRadius: 18, alignItems: "center" }}>
+            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>{tutorialStep < tutorial.length - 1 ? "Next" : "Finish and explore HER"}</Text>
+          </TouchableOpacity>
+          {tutorialStep > 0 && <TouchableOpacity onPress={() => setTutorialStep(tutorialStep - 1)} style={{ padding: 14, alignItems: "center" }}><Text style={{ color: t.pink, fontWeight: "800" }}>Back</Text></TouchableOpacity>}
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{flex:1,backgroundColor:t.bg}}>
