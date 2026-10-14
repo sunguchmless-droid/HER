@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Alert,
+  ImageBackground,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -17,12 +18,12 @@ type Screen =
 
 type ThemeName = "Aurora" | "Blossom" | "Lavender" | "Ocean" | "Sunset";
 
-const themeMap: Record<ThemeName, { bg: string; card: string; pink: string; purple: string; blue: string; green: string; glow: string; text: string }> = {
-  Aurora:   { bg: "#FFF6FC", card: "#FFFFFF", pink: "#E83F91", purple: "#7862D7", blue: "#55A9E8", green: "#78B987", glow: "#FFD4EA", text: "#342B38" },
-  Blossom:  { bg: "#FFF7F7", card: "#FFFFFF", pink: "#E75E86", purple: "#A46BC7", blue: "#77B8DD", green: "#7BBF91", glow: "#FFD2DE", text: "#382C31" },
-  Lavender: { bg: "#FAF7FF", card: "#FFFFFF", pink: "#D84F9A", purple: "#805BD0", blue: "#719FEA", green: "#7AB79E", glow: "#E2D6FF", text: "#302B3A" },
-  Ocean:    { bg: "#F3FBFF", card: "#FFFFFF", pink: "#D94E93", purple: "#6674D7", blue: "#3EA6D9", green: "#68B68E", glow: "#C8EEFF", text: "#28333A" },
-  Sunset:   { bg: "#FFF8F2", card: "#FFFFFF", pink: "#D95B7C", purple: "#9567C4", blue: "#75A9D9", green: "#7EAF87", glow: "#FFD9BF", text: "#392E2D" },
+const themeMap: Record<ThemeName, { bg: string; card: string; pink: string; purple: string; blue: string; green: string; glow: string; soft: string; text: string }> = {
+  Aurora:   { bg: "#FFF6FC", card: "#FFFFFF", pink: "#E83F91", purple: "#7862D7", blue: "#55A9E8", green: "#78B987", glow: "#FFD4EA", soft: "#FFF0F8", text: "#342B38" },
+  Blossom:  { bg: "#FFF7F7", card: "#FFFFFF", pink: "#E75E86", purple: "#A46BC7", blue: "#77B8DD", green: "#7BBF91", glow: "#FFD2DE", soft: "#FFF0F4", text: "#382C31" },
+  Lavender: { bg: "#FAF7FF", card: "#FFFFFF", pink: "#D84F9A", purple: "#805BD0", blue: "#719FEA", green: "#7AB79E", glow: "#E2D6FF", soft: "#F3EDFF", text: "#302B3A" },
+  Ocean:    { bg: "#F3FBFF", card: "#FFFFFF", pink: "#D94E93", purple: "#6674D7", blue: "#3EA6D9", green: "#68B68E", glow: "#C8EEFF", soft: "#EAF8FF", text: "#28333A" },
+  Sunset:   { bg: "#FFF8F2", card: "#FFFFFF", pink: "#D95B7C", purple: "#9567C4", blue: "#75A9D9", green: "#7EAF87", glow: "#FFD9BF", soft: "#FFF1E5", text: "#392E2D" },
 };
 
 const modules = [
