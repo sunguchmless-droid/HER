@@ -29,7 +29,7 @@ export function AuthScreen({ onAuthenticated }: AuthProps) {
       return;
     }
     const cleanEmail = email.trim().toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(cleanEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       setMessage("Enter a valid email address.");
       return;
     }
@@ -73,11 +73,14 @@ export function AuthScreen({ onAuthenticated }: AuthProps) {
     <Text style={styles.brand}>HER</Text>
     <Text style={styles.title}>Your private space for life.</Text>
     <Text style={styles.subtitle}>{mode === "signIn" ? "Welcome back." : mode === "signUp" ? "Create your private HER account." : "Recover access to your account."}</Text>
-    {mode === "signUp" && <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Your name" autoCapitalize="words" style={styles.input}/>}\n    <TextInput value={email} onChangeText={setEmail} placeholder="Email" autoCapitalize="none" keyboardType="email-address" style={styles.input}/>
+    {mode === "signUp" && <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Your name" autoCapitalize="words" style={styles.input}/>}
+    <TextInput value={email} onChangeText={setEmail} placeholder="Email" autoCapitalize="none" keyboardType="email-address" style={styles.input}/>
     {mode !== "resetPassword" && <TextInput value={password} onChangeText={setPassword} placeholder="Password (8+ characters)" secureTextEntry style={styles.input}/>}
     {!!message && <Text style={styles.message}>{message}</Text>}
     <Pressable disabled={busy} onPress={submit} style={styles.button}><Text style={styles.buttonText}>{busy ? "Please wait…" : mode === "signIn" ? "Sign in" : mode === "signUp" ? "Create account" : "Send reset link"}</Text></Pressable>
-    <Pressable onPress={()=>setMode(mode === "signUp" ? "signIn" : "signUp")}><Text style={styles.switch}>{mode === "signUp" ? "Already have an account? Sign in" : "New to HER? Create an account"}</Text></Pressable>\n    {mode === "signIn" && <Pressable onPress={() => setMode("resetPassword")}><Text style={styles.switch}>Forgot your password?</Text></Pressable>}\n    {mode === "resetPassword" && <Pressable onPress={() => setMode("signIn")}><Text style={styles.switch}>Back to sign in</Text></Pressable>}
+    <Pressable onPress={()=>setMode(mode === "signUp" ? "signIn" : "signUp")}><Text style={styles.switch}>{mode === "signUp" ? "Already have an account? Sign in" : "New to HER? Create an account"}</Text></Pressable>
+    {mode === "signIn" && <Pressable onPress={() => setMode("resetPassword")}><Text style={styles.switch}>Forgot your password?</Text></Pressable>}
+    {mode === "resetPassword" && <Pressable onPress={() => setMode("signIn")}><Text style={styles.switch}>Back to sign in</Text></Pressable>}
     {busy && <ActivityIndicator />}
   </View>;
 }
