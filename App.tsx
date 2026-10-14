@@ -332,6 +332,7 @@ const Background = () => (
       ["📚","Study & Career","Courses, tasks & growth","Study"],
       ["🌿","Self-Care","Routines for feeling good","SelfCare"],
     ].map(([icon,title,desc,target])=><TouchableOpacity key={title} onPress={()=>go(target as Screen)} style={[styles.moreRow,{backgroundColor:t.card}]}><Text style={{fontSize:25}}>{icon}</Text><View style={{flex:1}}><Text style={[styles.cardTitle,{color:t.text,fontSize:15}]}>{title}</Text><Text style={styles.muted}>{desc}</Text></View><Text style={{fontSize:25,color:t.pink}}>›</Text></TouchableOpacity>)}
+    <TouchableOpacity onPress={() => { setTutorialStep(0); setShowTutorial(true); }} style={[styles.moreRow,{backgroundColor:t.card}]}><Text style={{fontSize:25}}>📖</Text><View style={{flex:1}}><Text style={[styles.cardTitle,{color:t.text,fontSize:15}]}>Replay HER tutorial</Text><Text style={styles.muted}>Review the introduction and main features.</Text></View><Text style={{fontSize:25,color:t.pink}}>›</Text></TouchableOpacity>
   </>;
 
   const ScreenHeader = ({ title, subtitle }: { title: string; subtitle: string }) => (
